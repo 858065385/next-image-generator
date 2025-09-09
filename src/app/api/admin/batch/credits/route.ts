@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
         
       } catch (error) {
         console.error(`Error processing user ${userId}:`, error);
-        errors.push({ user_id: userId, error: error.message });
+        errors.push({ user_id: userId, error: error instanceof Error ? error.message : String(error) });
       }
     }
     
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
     console.error('Batch credit adjustment error:', error);
     return NextResponse.json({
       code: -1,
-      error: error.message
+      error: error instanceof Error ? error.message : String(error)
     }, { status: 500 });
   }
 }
