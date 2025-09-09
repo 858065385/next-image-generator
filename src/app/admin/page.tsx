@@ -262,7 +262,7 @@ export default function AdminPage() {
     if (!userId) return;
     
     const amount = prompt('请输入要添加的积分数:', '50');
-    if (!amount || isNaN(amount)) return;
+    if (!amount || isNaN(Number(amount))) return;
     
     setIsLoading(true);
     try {
@@ -308,7 +308,7 @@ export default function AdminPage() {
     if (!userId) return;
     
     const amount = prompt('请输入要使用的积分数:', '1');
-    if (!amount || isNaN(amount)) return;
+    if (!amount || isNaN(Number(amount))) return;
     
     setIsLoading(true);
     try {
