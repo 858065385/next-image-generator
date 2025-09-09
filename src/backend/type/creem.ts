@@ -45,7 +45,8 @@ export interface CreemWebhookEvent {
 // Creem Webhook 事件类型
 export interface CreemWebhookPayload {
   id: string;
-  type: 'subscription.paid' | 'subscription.canceled' | 'subscription.expired' | 'subscription.updated';
+  type?: 'subscription.paid' | 'subscription.canceled' | 'subscription.expired' | 'subscription.updated';
+  eventType?: 'subscription.paid' | 'subscription.canceled' | 'subscription.expired' | 'subscription.updated' | 'checkout.completed';
   data: {
     subscription?: {
       id: string;

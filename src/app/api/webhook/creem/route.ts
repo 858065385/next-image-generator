@@ -51,15 +51,18 @@ export async function POST(req: Request) {
       return Response.json({ received: true });
     }
 
+    // 获取事件类型，兼容不同的字段名
+    const eventType = (event as any).eventType || event.type;
+    
     // 记录 webhook 事件
     await createWebhookEvent({
       event_id: event.id,
-      event_type: event.type,
+      event_type: eventType,
       raw_data: body,
       processed: false,
     });
 
-    switch (event.type) {
+    switch (eventType) {
       case "subscription.paid":
         await handleSubscriptionPaid(event);
         break;
