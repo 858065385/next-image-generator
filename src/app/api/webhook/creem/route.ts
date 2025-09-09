@@ -45,22 +45,22 @@ export async function POST(req: Request) {
   }
 
   try {
-    // 检查事件是否已处理（防重）
-    if (await isWebhookEventProcessed(event.id)) {
-      console.log(`Event ${event.id} already processed`);
-      return Response.json({ received: true });
-    }
-
     // 获取事件类型，兼容不同的字段名
     const eventType = (event as any).eventType || event.type;
     
-    // 记录 webhook 事件
+    // 记录 webhook 事件（使用 UPSERT 避免重复）
     await createWebhookEvent({
       event_id: event.id,
       event_type: eventType,
       raw_data: body,
       processed: false,
     });
+
+    // 再次检查是否已处理（防止并发）
+    if (await isWebhookEventProcessed(event.id)) {
+      console.log(`Event ${event.id} already processed`);
+      return Response.json({ received: true });
+    }
 
     switch (eventType) {
       case "subscription.paid":
