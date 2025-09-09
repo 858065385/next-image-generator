@@ -97,7 +97,7 @@ export async function POST(req: Request) {
     await createWebhookEvent({
       event_id: event.id,
       event_type: eventType,
-      raw_data: body,
+      raw_data: rawBody,
       processed: false,
     });
 
