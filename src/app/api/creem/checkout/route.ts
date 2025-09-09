@@ -40,20 +40,29 @@ export async function POST(req: Request) {
       );
     }
 
-    // check existing user subscription
+    // check existing user subscription for upgrades
     if (plan_id !== 1 && plan_id !== 8 && plan_id !== 9) {
       const userSubscriptions = await getUserSubscriptionByUserIdAndStatus(
         user.uuid,
         [
           UserSubscriptionStatusEnum.ACTIVE,
-          UserSubscriptionStatusEnum.CANCELLED,
+          // Allow upgrades from cancelled subscriptions
+          // UserSubscriptionStatusEnum.CANCELLED,
         ]
       );
       if (userSubscriptions.length > 0) {
-        return Response.json(
-          { error: "You already has an active subscription" },
-          { status: 500 }
-        );
+        // Check if this is an upgrade (different plan_id)
+        const existingPlanId = userSubscriptions[0].subscription_plans_id;
+        if (existingPlanId !== parseInt(plan_id)) {
+          // Allow upgrade - user can switch to a different plan
+          console.log(`User upgrading from plan ${existingPlanId} to plan ${plan_id}`);
+        } else {
+          // Same plan - don't allow duplicate subscription
+          return Response.json(
+            { error: "You already has an active subscription to this plan" },
+            { status: 500 }
+          );
+        }
       }
     }
 
@@ -99,20 +108,38 @@ export async function POST(req: Request) {
     }
 
     // Create Creem checkout session
-    const checkoutSession = await creem.createCheckoutSession({
+    console.log('Creating Creem checkout session with:', {
       product_id: creemProductId,
-      success_url: `${process.env.WEB_BASE_URI}/pricing?success=true`,
-      metadata: {
-        project: "ai-video-generator",
-        interval: interval,
-        userId: String(user.uuid),
-        productId: creemProductId,
-        paymentHistoryId: String(paymentHistory.id),
-        credit: String(subscriptionPlan.credit_per_interval),
-        subscriptionPlanId: String(plan_id),
-        customer_email: user.email,
-      }
+      interval,
+      userId: user.uuid,
+      plan_id,
+      email: user.email
     });
+    
+    let checkoutSession;
+    try {
+      checkoutSession = await creem.createCheckoutSession({
+        product_id: creemProductId,
+        success_url: `${process.env.WEB_BASE_URI}/pricing?success=true`,
+        metadata: {
+          project: "ai-video-generator",
+          interval: interval,
+          userId: String(user.uuid),
+          productId: creemProductId,
+          paymentHistoryId: String(paymentHistory.id),
+          credit: String(subscriptionPlan.credit_per_interval),
+          subscriptionPlanId: String(plan_id),
+          customer_email: user.email,
+        }
+      });
+      console.log('Creem checkout session created successfully:', checkoutSession.id);
+    } catch (creemError) {
+      console.error('Creem API error:', creemError);
+      return Response.json(
+        { error: `Creem checkout failed: ${creemError.message || creemError}` },
+        { status: 500 }
+      );
+    }
 
     return Response.json({ 
       checkout_url: checkoutSession.checkout_url,
