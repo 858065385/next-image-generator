@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 
 function PaymentResultContent() {
@@ -10,8 +10,10 @@ function PaymentResultContent() {
   const [subscriptionDetails, setSubscriptionDetails] = useState<any>(null);
   const [creemDetails, setCreemDetails] = useState<any>(null);
   const [creemParams, setCreemParams] = useState<string>('');
+  const pollingIntervalRef = useRef<NodeJS.Timeout>();
   
   useEffect(() => {
+    
     const verifySignature = async () => {
       const success = searchParams.get('success');
       const signature = searchParams.get('signature');
@@ -65,7 +67,12 @@ function PaymentResultContent() {
               setMessage('支付成功！感谢您的订阅。');
               
               // 获取订阅详情
-              fetchSubscriptionDetails();
+              await fetchSubscriptionDetails();
+              
+              // 开始轮询检查状态更新
+              pollingIntervalRef.current = setInterval(async () => {
+                await fetchSubscriptionDetails();
+              }, 3000);
             } else if (success === 'false' || success === '0') {
               setStatus('error');
               setMessage('支付失败或已取消。');
@@ -88,28 +95,80 @@ function PaymentResultContent() {
         // 没有签名，显示警告但仍处理
         setStatus('loading');
         setMessage('警告：支付结果未经验证，请联系客服确认。');
+        
+        // 仍然尝试获取订阅详情
+        await fetchSubscriptionDetails();
       }
     };
     
     verifySignature();
+    
+    // 清理函数
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
   }, [searchParams]);
   
   const fetchSubscriptionDetails = async () => {
     try {
-      // 这里可以调用 API 获取用户的订阅详情
-      // const response = await fetch('/api/user/subscription');
-      // const data = await response.json();
+      // 获取用户会话信息
+      const sessionResponse = await fetch('/api/auth/session');
+      const sessionData = await sessionResponse.json();
       
-      // 暂时使用模拟数据
-      setSubscriptionDetails({
-        plan: 'Pro Plan',
-        credits: 100,
-        interval: 'monthly',
-        amount: '$15.90',
-        status: 'active'
-      });
+      if (sessionData.user) {
+        // 获取用户的订阅和积分信息
+        const response = await fetch('/api/user/get_user_subscription_info');
+        const data = await response.json();
+        
+        if (data.code === 0 && data.user && data.subscription && data.credit_usage) {
+          // 根据订阅计划 ID 确定计划名称
+          const planName = data.subscription.subscription_plans_id === 1 ? 'Monthly Pro' : 
+                          data.subscription.subscription_plans_id === 2 ? 'Yearly Pro' : 'Pro Plan';
+          
+          // 根据积分余额和周期计算总积分
+          const totalCredits = data.credit_usage.period_remain_count + data.credit_usage.used_count;
+          
+          const details = {
+            plan: planName,
+            credits: data.credit_usage.period_remain_count,
+            totalCredits: totalCredits,
+            interval: data.subscription.interval || 'year',
+            amount: data.subscription.interval === 'year' ? '$99.00' : '$15.90',
+            status: data.subscription.status,
+            currentPeriodEnd: data.subscription.current_period_end,
+            userId: data.user.id,
+            email: data.user.email
+          };
+          
+          setSubscriptionDetails(details);
+          
+          // 如果订阅已经激活，更新消息并停止轮询
+          if (data.subscription.status === 'active' && status === 'loading') {
+            setStatus('success');
+            setMessage('支付成功！订阅已激活。');
+            if (pollingIntervalRef.current) {
+              clearInterval(pollingIntervalRef.current);
+              pollingIntervalRef.current = undefined;
+            }
+          }
+        }
+      }
     } catch (error) {
       console.error('Error fetching subscription details:', error);
+      // 如果获取失败，使用默认数据
+      setSubscriptionDetails({
+        plan: 'Pro Plan',
+        credits: 0,
+        totalCredits: 0,
+        interval: 'year',
+        amount: '$99.00',
+        status: 'pending',
+        currentPeriodEnd: null,
+        userId: null,
+        email: null
+      });
     }
   };
 
@@ -198,6 +257,11 @@ function PaymentResultContent() {
                     <span style={{ color: '#15803d' }}>积分余额：</span>
                     <span style={{ fontWeight: 'bold', color: '#166534' }}>
                       {subscriptionDetails.credits} 积分
+                      {subscriptionDetails.totalCredits > 0 && (
+                        <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
+                          (总计: {subscriptionDetails.totalCredits})
+                        </span>
+                      )}
                     </span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -216,11 +280,29 @@ function PaymentResultContent() {
                     <span style={{ color: '#15803d' }}>状态：</span>
                     <span style={{ 
                       fontWeight: 'bold', 
-                      color: subscriptionDetails.status === 'active' ? '#166534' : '#ca8a04'
+                      color: subscriptionDetails.status === 'active' ? '#166534' : 
+                             subscriptionDetails.status === 'pending' ? '#ca8a04' : '#991b1b'
                     }}>
-                      {subscriptionDetails.status === 'active' ? '已激活' : '待激活'}
+                      {subscriptionDetails.status === 'active' ? '✅ 已激活' : 
+                       subscriptionDetails.status === 'pending' ? '⏳ 待激活' : '❌ 已过期'}
                     </span>
                   </div>
+                  {subscriptionDetails.currentPeriodEnd && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#15803d' }}>到期时间：</span>
+                      <span style={{ fontWeight: 'bold', color: '#166534' }}>
+                        {formatDateTime(subscriptionDetails.currentPeriodEnd)}
+                      </span>
+                    </div>
+                  )}
+                  {subscriptionDetails.userId && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#15803d' }}>用户ID：</span>
+                      <span style={{ fontFamily: 'monospace', color: '#166534', fontSize: '0.875rem' }}>
+                        {subscriptionDetails.userId}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
