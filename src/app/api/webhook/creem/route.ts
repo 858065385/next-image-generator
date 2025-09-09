@@ -1,5 +1,4 @@
 export const dynamic = 'force-dynamic';
-export const config = { api: { bodyParser: false } };
 
 import crypto from 'crypto';
 import { verifyCreemWebhook } from "@/backend/lib/creem";
