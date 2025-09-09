@@ -1,5 +1,7 @@
 export const dynamic = 'force-dynamic';
+export const config = { api: { bodyParser: false } };
 
+import crypto from 'crypto';
 import { verifyCreemWebhook } from "@/backend/lib/creem";
 import { CreemWebhookPayload } from "@/backend/type/creem";
 import {
@@ -26,23 +28,30 @@ import {
 import { UserSubscriptionStatusEnum } from "@/backend/type/enum/user_subscription_enum";
 
 export async function POST(req: Request) {
-  const body = await req.text();
+  const rawBody = await req.text();
   const signature = req.headers.get("creem-signature") as string;
   const webhookSecret = process.env.CREEM_WEBHOOK_SECRET!;
 
+  // 调试日志
+  console.log('[raw webhook]', rawBody.slice(0, 500));
+
   // 验证 webhook 签名
-  if (!verifyCreemWebhook(body, signature, webhookSecret)) {
+  if (!verifyCreemWebhook(rawBody, signature, webhookSecret)) {
     console.error("Invalid Creem webhook signature");
     return Response.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-  let event: CreemWebhookPayload;
+  let event: any;
   try {
-    event = JSON.parse(body);
+    event = JSON.parse(rawBody);
   } catch (err) {
     console.error("Invalid JSON in webhook payload:", err);
     return Response.json({ error: "Invalid JSON" }, { status: 400 });
   }
+
+  // 调试日志
+  console.log('[event type]', event.type || event.eventType);
+  console.log('[event data]', event.data ?? '<<< undefined >>>');
 
   try {
     // 获取事件类型，兼容不同的字段名
@@ -102,10 +111,14 @@ export async function POST(req: Request) {
   return Response.json({ received: true });
 }
 
-async function handleSubscriptionPaid(event: CreemWebhookPayload) {
+async function handleSubscriptionPaid(event: any) {
   console.log("Processing subscription.paid event");
+  if (!event.data || !event.data.subscription) {
+    console.log('No subscription data in event');
+    return;
+  }
   const { subscription } = event.data;
-  if (!subscription || !subscription.metadata) return;
+  if (!subscription.metadata) return;
 
   const {
     userId,
@@ -196,10 +209,14 @@ async function handleSubscriptionPaid(event: CreemWebhookPayload) {
   }
 }
 
-async function handleSubscriptionCanceled(event: CreemWebhookPayload) {
+async function handleSubscriptionCanceled(event: any) {
   console.log("Processing subscription.canceled event");
+  if (!event.data || !event.data.subscription) {
+    console.log('No subscription data in event');
+    return;
+  }
   const { subscription } = event.data;
-  if (!subscription || !subscription.metadata) return;
+  if (!subscription.metadata) return;
 
   const { userId } = subscription.metadata;
   const existingSubscription = await getUserSubscriptionByUserId(userId);
@@ -220,10 +237,14 @@ async function handleSubscriptionCanceled(event: CreemWebhookPayload) {
   }
 }
 
-async function handleSubscriptionExpired(event: CreemWebhookPayload) {
+async function handleSubscriptionExpired(event: any) {
   console.log("Processing subscription.expired event");
+  if (!event.data || !event.data.subscription) {
+    console.log('No subscription data in event');
+    return;
+  }
   const { subscription } = event.data;
-  if (!subscription || !subscription.metadata) return;
+  if (!subscription.metadata) return;
 
   const { userId } = subscription.metadata;
   const existingSubscription = await getUserSubscriptionByUserId(userId);
@@ -244,24 +265,24 @@ async function handleSubscriptionExpired(event: CreemWebhookPayload) {
   }
 }
 
-async function handleSubscriptionUpdated(event: CreemWebhookPayload) {
+async function handleSubscriptionUpdated(event: any) {
   console.log("Processing subscription.updated event");
   // 处理订阅更新逻辑，如升降级等
   await handleSubscriptionPaid(event); // 可以复用 paid 逻辑
 }
 
-async function handleCheckoutCompleted(event: CreemWebhookPayload) {
+async function handleCheckoutCompleted(event: any) {
   console.log("Processing checkout.completed event");
-  console.log('Checkout event data:', JSON.stringify(event.data, null, 2));
   
-  // checkout.completed 事件通常包含 checkout 数据而不是 subscription
-  const { checkout } = event.data as any;
-  
-  if (checkout && checkout.metadata) {
-    console.log('Checkout metadata:', checkout.metadata);
-    
-    // 这里可以处理 checkout 完成后的逻辑
-    // 例如：记录支付历史、发送确认邮件等
-    // 但实际的订阅激活应该等待 subscription.paid 事件
+  if (!event.data || !event.data.checkout) {
+    console.log('No checkout data in event');
+    console.log('Full event structure:', JSON.stringify(event, null, 2));
+    return;
   }
-}
+  
+  const { checkout } = event.data;
+  console.log('Checkout data:', JSON.stringify(checkout, null, 2));
+  
+  if (checkout.metadata) {
+    console.log('Checkout metadata:', checkout.metadata);
+  }
