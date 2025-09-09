@@ -27,26 +27,54 @@ import {
 import { UserSubscriptionStatusEnum } from "@/backend/type/enum/user_subscription_enum";
 
 export async function POST(req: Request) {
+  // 1. 打印所有请求头
+  console.log('[all headers]', [...req.headers.entries()]);
+  
   const rawBody = await req.text();
-  const signature = req.headers.get("x-creem-signature") as string;
+  
+  // 2. 兼容两种可能的签名头名称
+  const signature1 = req.headers.get("x-creem-signature");
+  const signature2 = req.headers.get("creem-signature");
+  const signature = signature1 || signature2;
   const webhookSecret = process.env.CREEM_WEBHOOK_SECRET!;
 
   // 调试日志
   console.log('[raw webhook]', rawBody.slice(0, 500));
+  console.log('[debug] x-creem-signature:', signature1);
+  console.log('[debug] creem-signature:', signature2);
+  console.log('[debug] using signature:', signature);
+  console.log('[debug] webhookSecret exists:', !!webhookSecret);
+  console.log('[debug] webhookSecret length:', webhookSecret?.length || 0);
+
+  // 如果没有签名头，返回详细错误
+  if (!signature) {
+    console.error("No Creem webhook signature found in headers");
+    return Response.json({ 
+      error: "No signature found",
+      headers: [...req.headers.entries()],
+      availableSignatureHeaders: {
+        'x-creem-signature': signature1,
+        'creem-signature': signature2
+      }
+    }, { status: 400 });
+  }
 
   // 验证 webhook 签名
   // 计算期望的签名用于调试
   const expectedSignature = crypto.createHmac('sha256', webhookSecret).update(rawBody, 'utf8').digest('hex');
-  console.log('[debug] signature from header:', signature);
   console.log('[debug] expected signature:', expectedSignature);
-  console.log('[debug] webhookSecret length:', webhookSecret?.length || 0);
   
   if (!verifyCreemWebhook(rawBody, signature, webhookSecret)) {
     console.error("Invalid Creem webhook signature");
     console.error('[debug] signature mismatch');
     console.error('[debug] received:', signature);
     console.error('[debug] expected:', expectedSignature);
-    return Response.json({ error: "Invalid signature" }, { status: 400 });
+    return Response.json({ 
+      error: "Invalid signature",
+      received: signature,
+      expected: expectedSignature,
+      webhookSecretLength: webhookSecret?.length || 0
+    }, { status: 400 });
   }
 
   let event: any;
