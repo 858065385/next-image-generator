@@ -79,8 +79,13 @@ export async function POST(req: Request) {
         await handleSubscriptionUpdated(event);
         break;
 
+      case "checkout.completed":
+        await handleCheckoutCompleted(event);
+        break;
+
       default:
-        console.log(`Unhandled Creem event type: ${event.type}`);
+        console.log(`Unhandled Creem event type: ${eventType}`);
+        console.log('Event data:', JSON.stringify(event.data, null, 2));
     }
 
     // 标记事件为已处理
@@ -243,4 +248,20 @@ async function handleSubscriptionUpdated(event: CreemWebhookPayload) {
   console.log("Processing subscription.updated event");
   // 处理订阅更新逻辑，如升降级等
   await handleSubscriptionPaid(event); // 可以复用 paid 逻辑
+}
+
+async function handleCheckoutCompleted(event: CreemWebhookPayload) {
+  console.log("Processing checkout.completed event");
+  console.log('Checkout event data:', JSON.stringify(event.data, null, 2));
+  
+  // checkout.completed 事件通常包含 checkout 数据而不是 subscription
+  const { checkout } = event.data as any;
+  
+  if (checkout && checkout.metadata) {
+    console.log('Checkout metadata:', checkout.metadata);
+    
+    // 这里可以处理 checkout 完成后的逻辑
+    // 例如：记录支付历史、发送确认邮件等
+    // 但实际的订阅激活应该等待 subscription.paid 事件
+  }
 }
