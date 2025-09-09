@@ -286,3 +286,4 @@ async function handleCheckoutCompleted(event: any) {
   if (checkout.metadata) {
     console.log('Checkout metadata:', checkout.metadata);
   }
+}
