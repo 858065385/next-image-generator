@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: false,
       message: 'Database connection failed',
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
       stack: error.stack
     }, { status: 500 });
   }

@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
     console.error('Get admin logs error:', error);
     return NextResponse.json({
       code: -1,
-      error: error.message
+      error: error instanceof Error ? error.message : String(error)
     }, { status: 500 });
   }
 }
