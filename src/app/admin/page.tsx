@@ -95,7 +95,7 @@ export default function AdminPage() {
       addTestResult({
         action: '查询用户',
         status: 'error',
-        message: `网络错误: ${error.message}`
+        message: `网络错误: ${error instanceof Error ? error.message : '未知错误'}`
       });
     } finally {
       setIsLoading(false);
@@ -167,7 +167,7 @@ export default function AdminPage() {
       addTestResult({
         action: '设置免费用户',
         status: 'error',
-        message: `网络错误: ${error.message}`
+        message: `网络错误: ${error instanceof Error ? error.message : '未知错误'}`
       });
     } finally {
       setIsLoading(false);
@@ -209,7 +209,7 @@ export default function AdminPage() {
       addTestResult({
         action: '设置月度会员',
         status: 'error',
-        message: `网络错误: ${error.message}`
+        message: `网络错误: ${error instanceof Error ? error.message : '未知错误'}`
       });
     } finally {
       setIsLoading(false);
@@ -251,7 +251,7 @@ export default function AdminPage() {
       addTestResult({
         action: '设置年度会员',
         status: 'error',
-        message: `网络错误: ${error.message}`
+        message: `网络错误: ${error instanceof Error ? error.message : '未知错误'}`
       });
     } finally {
       setIsLoading(false);
@@ -297,7 +297,7 @@ export default function AdminPage() {
       addTestResult({
         action: '添加积分',
         status: 'error',
-        message: `网络错误: ${error.message}`
+        message: `网络错误: ${error instanceof Error ? error.message : '未知错误'}`
       });
     } finally {
       setIsLoading(false);
@@ -343,7 +343,7 @@ export default function AdminPage() {
       addTestResult({
         action: '使用积分',
         status: 'error',
-        message: `网络错误: ${error.message}`
+        message: `网络错误: ${error instanceof Error ? error.message : '未知错误'}`
       });
     } finally {
       setIsLoading(false);
@@ -386,7 +386,7 @@ export default function AdminPage() {
       addTestResult({
         action: `模拟${planType === 'monthly' ? '月度' : '年度'}支付`,
         status: 'error',
-        message: `网络错误: ${error.message}`
+        message: `网络错误: ${error instanceof Error ? error.message : '未知错误'}`
       });
     } finally {
       setIsLoading(false);
