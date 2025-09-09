@@ -47,7 +47,7 @@ export interface CreemWebhookPayload {
   id: string;
   type?: 'subscription.paid' | 'subscription.canceled' | 'subscription.expired' | 'subscription.updated';
   eventType?: 'subscription.paid' | 'subscription.canceled' | 'subscription.expired' | 'subscription.updated' | 'checkout.completed';
-  data: {
+  object: {
     subscription?: {
       id: string;
       customer_id: string;

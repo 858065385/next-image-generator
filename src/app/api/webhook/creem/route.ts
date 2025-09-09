@@ -28,7 +28,7 @@ import { UserSubscriptionStatusEnum } from "@/backend/type/enum/user_subscriptio
 
 export async function POST(req: Request) {
   const rawBody = await req.text();
-  const signature = req.headers.get("creem-signature") as string;
+  const signature = req.headers.get("x-creem-signature") as string;
   const webhookSecret = process.env.CREEM_WEBHOOK_SECRET!;
 
   // 调试日志
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
 
   // 调试日志
   console.log('[event type]', event.type || event.eventType);
-  console.log('[event data]', event.data ?? '<<< undefined >>>');
+  console.log('[event object]', event.object ?? '<<< undefined >>>');
 
   try {
     // 获取事件类型，兼容不同的字段名
@@ -93,7 +93,7 @@ export async function POST(req: Request) {
 
       default:
         console.log(`Unhandled Creem event type: ${eventType}`);
-        console.log('Event data:', JSON.stringify(event.data, null, 2));
+        console.log('Event object:', JSON.stringify(event.object, null, 2));
     }
 
     // 标记事件为已处理
@@ -112,11 +112,11 @@ export async function POST(req: Request) {
 
 async function handleSubscriptionPaid(event: any) {
   console.log("Processing subscription.paid event");
-  if (!event.data || !event.data.subscription) {
+  if (!event.object || !event.object.subscription) {
     console.log('No subscription data in event');
     return;
   }
-  const { subscription } = event.data;
+  const { subscription } = event.object;
   if (!subscription.metadata) return;
 
   const {
@@ -210,11 +210,11 @@ async function handleSubscriptionPaid(event: any) {
 
 async function handleSubscriptionCanceled(event: any) {
   console.log("Processing subscription.canceled event");
-  if (!event.data || !event.data.subscription) {
+  if (!event.object || !event.object.subscription) {
     console.log('No subscription data in event');
     return;
   }
-  const { subscription } = event.data;
+  const { subscription } = event.object;
   if (!subscription.metadata) return;
 
   const { userId } = subscription.metadata;
@@ -238,11 +238,11 @@ async function handleSubscriptionCanceled(event: any) {
 
 async function handleSubscriptionExpired(event: any) {
   console.log("Processing subscription.expired event");
-  if (!event.data || !event.data.subscription) {
+  if (!event.object || !event.object.subscription) {
     console.log('No subscription data in event');
     return;
   }
-  const { subscription } = event.data;
+  const { subscription } = event.object;
   if (!subscription.metadata) return;
 
   const { userId } = subscription.metadata;
@@ -273,13 +273,13 @@ async function handleSubscriptionUpdated(event: any) {
 async function handleCheckoutCompleted(event: any) {
   console.log("Processing checkout.completed event");
   
-  if (!event.data || !event.data.checkout) {
+  if (!event.object || !event.object.checkout) {
     console.log('No checkout data in event');
     console.log('Full event structure:', JSON.stringify(event, null, 2));
     return;
   }
   
-  const { checkout } = event.data;
+  const { checkout } = event.object;
   console.log('Checkout data:', JSON.stringify(checkout, null, 2));
   
   if (checkout.metadata) {
