@@ -112,7 +112,7 @@ export function verifyCreemWebhook(
     .update(payload, 'utf8')
     .digest('hex');
   
-  return signature === expectedSignature;
+  return signature.toLowerCase() === expectedSignature.toLowerCase();
 }
 
 // 创建 Creem 客户端实例

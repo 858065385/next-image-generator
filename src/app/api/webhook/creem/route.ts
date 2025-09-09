@@ -35,8 +35,17 @@ export async function POST(req: Request) {
   console.log('[raw webhook]', rawBody.slice(0, 500));
 
   // 验证 webhook 签名
+  // 计算期望的签名用于调试
+  const expectedSignature = crypto.createHmac('sha256', webhookSecret).update(rawBody, 'utf8').digest('hex');
+  console.log('[debug] signature from header:', signature);
+  console.log('[debug] expected signature:', expectedSignature);
+  console.log('[debug] webhookSecret length:', webhookSecret?.length || 0);
+  
   if (!verifyCreemWebhook(rawBody, signature, webhookSecret)) {
     console.error("Invalid Creem webhook signature");
+    console.error('[debug] signature mismatch');
+    console.error('[debug] received:', signature);
+    console.error('[debug] expected:', expectedSignature);
     return Response.json({ error: "Invalid signature" }, { status: 400 });
   }
 
