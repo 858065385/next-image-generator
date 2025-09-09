@@ -10,9 +10,7 @@ export function getDb() {
     globalPool = new Pool({
       connectionString,
       ssl: { 
-        rejectUnauthorized: false,
-        // 添加更多SSL选项
-        sslmode: 'require'
+        rejectUnauthorized: false
       },
       max: 3, // 进一步减少连接数
       idleTimeoutMillis: 5000, // 更短的空闲时间

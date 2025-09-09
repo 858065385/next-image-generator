@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     // 按日期统计使用情况
     const usageByDate = {};
     effectResults.forEach(result => {
-      const date = result.created_at.split('T')[0];
+      const date = new Date(result.created_at).toISOString().split('T')[0];
       if (!usageByDate[date]) {
         usageByDate[date] = {
           date,

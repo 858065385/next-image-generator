@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { searchUsers, getAllUsers } from '@/backend/service/user';
 

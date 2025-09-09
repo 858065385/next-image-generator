@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { creem } from "@/backend/lib/creem";
 
 export async function GET() {

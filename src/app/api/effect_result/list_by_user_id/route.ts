@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { pageListEffectResultsByUserId } from "@/backend/service/effect_result";
 
 export const maxDuration = 60; // Set max duration to 60 seconds (1 minute)

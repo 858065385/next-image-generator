@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { verifyCreemWebhook } from "@/backend/lib/creem";
 import { CreemWebhookPayload } from "@/backend/type/creem";
 import {

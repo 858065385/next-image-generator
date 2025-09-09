@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { countEffectResultsByUserId } from "@/backend/service/effect_result";
 import { NextResponse } from "next/server";
 import { NextRequest } from "next/server";

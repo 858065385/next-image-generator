@@ -47,7 +47,7 @@ export default function DatabaseDemoPage() {
           account: {
             type: 'oauth',
             provider: 'google',
-            providerAccountId: session.sub || 'test'
+            providerAccountId: (session as any).sub || 'test'
           }
         })
       });
