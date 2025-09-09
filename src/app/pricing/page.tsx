@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
-export default function PricingPage() {
+function PricingContent() {
   const searchParams = useSearchParams();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
@@ -150,5 +150,23 @@ export default function PricingPage() {
         <p>返回 <a href="/" style={{ color: '#3b82f6' }}>首页</a></p>
       </div>
     </div>
+  );
+}
+
+export default function PricingPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ 
+        maxWidth: '800px', 
+        margin: '0 auto', 
+        padding: '2rem',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        textAlign: 'center'
+      }}>
+        <div>加载中...</div>
+      </div>
+    }>
+      <PricingContent />
+    </Suspense>
   );
 }
