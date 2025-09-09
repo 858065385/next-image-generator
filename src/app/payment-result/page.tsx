@@ -9,28 +9,98 @@ function PaymentResultContent() {
   const [message, setMessage] = useState('');
   const [subscriptionDetails, setSubscriptionDetails] = useState<any>(null);
   const [creemDetails, setCreemDetails] = useState<any>(null);
+  const [creemParams, setCreemParams] = useState<string>('');
   
   useEffect(() => {
-    const success = searchParams.get('success');
-    const checkoutId = searchParams.get('checkout_id');
-    const orderId = searchParams.get('order_id');
-    const paymentId = searchParams.get('payment_id');
-    
-    // Store Creem-specific parameters
-    const creemParams = {
-      checkout_id: checkoutId,
-      order_id: orderId,
-      payment_id: paymentId
+    const verifySignature = async () => {
+      const success = searchParams.get('success');
+      const signature = searchParams.get('signature');
+      
+      // 收集所有查询参数（除了 signature）
+      const params: Record<string, string> = {};
+      searchParams.forEach((value, key) => {
+        if (key !== 'signature') {
+          params[key] = value;
+        }
+      });
+      
+      // 构建查询字符串（按字母顺序排序以确保一致性）
+      const queryParams = Object.keys(params)
+        .sort()
+        .map(key => `${key}=${params[key]}`)
+        .join('&');
+      
+      setCreemParams(queryParams);
+      
+      // 验证签名
+      if (signature && queryParams) {
+        try {
+          const response = await fetch('/api/creem/verify-signature', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              signature,
+              queryParams
+            }),
+          });
+          
+          const result = await response.json();
+          
+          if (result.valid) {
+            // 签名验证成功，处理支付结果
+            const checkoutId = params.checkout_id;
+            const orderId = params.order_id;
+            const paymentId = params.payment_id;
+            
+            setCreemDetails({
+              checkout_id: checkoutId,
+              order_id: orderId,
+              payment_id: paymentId
+            });
+            
+            if (success === 'true' || success === '1') {
+              setStatus('success');
+              setMessage('支付成功！感谢您的订阅。');
+              
+              // 获取订阅详情
+              fetchSubscriptionDetails();
+            } else if (success === 'false' || success === '0') {
+              setStatus('error');
+              setMessage('支付失败或已取消。');
+            } else {
+              setStatus('loading');
+              setMessage('正在处理支付结果...');
+            }
+          } else {
+            // 签名验证失败
+            setStatus('error');
+            setMessage('支付验证失败，请检查订单状态。');
+            console.error('Signature verification failed:', result);
+          }
+        } catch (error) {
+          console.error('Error verifying signature:', error);
+          setStatus('error');
+          setMessage('验证支付状态时出错。');
+        }
+      } else {
+        // 没有签名，显示警告但仍处理
+        setStatus('loading');
+        setMessage('警告：支付结果未经验证，请联系客服确认。');
+      }
     };
     
-    setCreemDetails(creemParams);
-    
-    if (success === 'true' || success === '1') {
-      setStatus('success');
-      setMessage('支付成功！感谢您的订阅。');
+    verifySignature();
+  }, [searchParams]);
+  
+  const fetchSubscriptionDetails = async () => {
+    try {
+      // 这里可以调用 API 获取用户的订阅详情
+      // const response = await fetch('/api/user/subscription');
+      // const data = await response.json();
       
-      // Simulate fetching subscription details
-      // In a real implementation, you would fetch this from your API
+      // 暂时使用模拟数据
       setSubscriptionDetails({
         plan: 'Pro Plan',
         credits: 100,
@@ -38,14 +108,10 @@ function PaymentResultContent() {
         amount: '$15.90',
         status: 'active'
       });
-    } else if (success === 'false' || success === '0') {
-      setStatus('error');
-      setMessage('支付失败或已取消。');
-    } else {
-      setStatus('loading');
-      setMessage('正在处理支付结果...');
+    } catch (error) {
+      console.error('Error fetching subscription details:', error);
     }
-  }, [searchParams]);
+  };
 
   const formatDateTime = (timestamp: number | string) => {
     return new Date(timestamp).toLocaleString('zh-CN', {
@@ -193,6 +259,11 @@ function PaymentResultContent() {
                     <span style={{ fontFamily: 'monospace', color: '#0c4a6e' }}>
                       {creemDetails.payment_id}
                     </span>
+                  </div>
+                )}
+                {creemParams && (
+                  <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #e0f2fe' }}>
+                    <span style={{ color: '#075985' }}>🔒 签名验证：已通过</span>
                   </div>
                 )}
               </div>
