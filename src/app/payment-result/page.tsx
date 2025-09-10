@@ -26,6 +26,15 @@ function PaymentResultContent() {
         }
       });
       
+      console.log('URL params:', params);
+      
+      // 尝试从 URL 参数获取 user_id（如果支付页面传了的话）
+      const urlUserId = params.user_id;
+      if (urlUserId) {
+        // 保存到 localStorage 供后续使用
+        localStorage.setItem('userId', urlUserId);
+      }
+      
       // 构建查询字符串（按字母顺序排序以确保一致性）
       const queryParams = Object.keys(params)
         .sort()
@@ -66,12 +75,12 @@ function PaymentResultContent() {
               setStatus('success');
               setMessage('支付成功！感谢您的订阅。');
               
-              // 获取订阅详情
-              await fetchSubscriptionDetails();
+              // 检查支付状态
+              await checkPaymentStatus();
               
               // 开始轮询检查状态更新
               pollingIntervalRef.current = setInterval(async () => {
-                await fetchSubscriptionDetails();
+                await checkPaymentStatus();
               }, 3000);
             } else if (success === 'false' || success === '0') {
               setStatus('error');
@@ -96,8 +105,8 @@ function PaymentResultContent() {
         setStatus('loading');
         setMessage('警告：支付结果未经验证，请联系客服确认。');
         
-        // 仍然尝试获取订阅详情
-        await fetchSubscriptionDetails();
+        // 仍然尝试检查支付状态
+        await checkPaymentStatus();
       }
     };
     
@@ -111,64 +120,109 @@ function PaymentResultContent() {
     };
   }, [searchParams]);
   
-  const fetchSubscriptionDetails = async () => {
+  const checkPaymentStatus = async () => {
     try {
-      // 获取用户会话信息
-      const sessionResponse = await fetch('/api/auth/session');
-      const sessionData = await sessionResponse.json();
+      // 按优先级获取用户 ID
+      let userId = null;
       
-      if (sessionData.user) {
-        // 获取用户的订阅和积分信息
-        const response = await fetch('/api/user/get_user_subscription_info');
+      // 1. 从 localStorage 获取（之前保存的）
+      userId = localStorage.getItem('userId');
+      
+      // 2. 从 localStorage 获取完整用户信息
+      if (!userId) {
+        try {
+          const userInfo = localStorage.getItem('userInfo');
+          if (userInfo) {
+            const user = JSON.parse(userInfo);
+            userId = user.id;
+          }
+        } catch (e) {
+          console.error('Error getting user from localStorage:', e);
+        }
+      }
+      
+      // 3. 最后才从 session API 获取
+      if (!userId) {
+        const sessionResponse = await fetch('/api/auth/session');
+        const sessionData = await sessionResponse.json();
+        userId = sessionData.user?.id;
+        
+        // 缓存到 localStorage
+        if (sessionData.user) {
+          localStorage.setItem('userInfo', JSON.stringify(sessionData.user));
+          localStorage.setItem('userId', sessionData.user.id);
+        }
+      }
+      
+      console.log('User ID:', userId);
+      console.log('Creem details:', creemDetails);
+      
+      if (userId && creemDetails?.checkout_id) {
+        // 检查支付状态
+        const response = await fetch('/api/payment/check-status', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            checkout_id: creemDetails.checkout_id,
+            user_id: userId
+          }),
+        });
+        
         const data = await response.json();
         
-        if (data.code === 0 && data.user && data.subscription && data.credit_usage) {
-          // 根据订阅计划 ID 确定计划名称
-          const planName = data.subscription.subscription_plans_id === 1 ? 'Monthly Pro' : 
-                          data.subscription.subscription_plans_id === 2 ? 'Yearly Pro' : 'Pro Plan';
+        console.log('Payment status API response:', data);
+        
+        if (data.found && data.payment) {
+          setSubscriptionDetails({
+            paymentId: data.payment.id,
+            status: data.payment.status,
+            amount: data.payment.amount,
+            currency: data.payment.currency,
+            checkoutId: data.payment.checkoutId,
+            subscriptionId: data.payment.subscriptionId,
+            createdAt: data.payment.createdAt,
+            userId: sessionData.user.id,
+            email: sessionData.user.email
+          });
           
-          // 根据积分余额和周期计算总积分
-          const totalCredits = data.credit_usage.period_remain_count + data.credit_usage.used_count;
-          
-          const details = {
-            plan: planName,
-            credits: data.credit_usage.period_remain_count,
-            totalCredits: totalCredits,
-            interval: data.subscription.interval || 'year',
-            amount: data.subscription.interval === 'year' ? '$99.00' : '$15.90',
-            status: data.subscription.status,
-            currentPeriodEnd: data.subscription.current_period_end,
-            userId: data.user.id,
-            email: data.user.email
-          };
-          
-          setSubscriptionDetails(details);
-          
-          // 如果订阅已经激活，更新消息并停止轮询
-          if (data.subscription.status === 'active' && status === 'loading') {
+          // 根据支付状态更新页面状态
+          if (data.payment.status === 'success' && status === 'loading') {
             setStatus('success');
-            setMessage('支付成功！订阅已激活。');
+            setMessage('支付成功！感谢您的订阅。');
+            if (pollingIntervalRef.current) {
+              clearInterval(pollingIntervalRef.current);
+              pollingIntervalRef.current = undefined;
+            }
+          } else if (data.payment.status === 'failed' && status === 'loading') {
+            setStatus('error');
+            setMessage('支付失败，请重试或联系客服。');
             if (pollingIntervalRef.current) {
               clearInterval(pollingIntervalRef.current);
               pollingIntervalRef.current = undefined;
             }
           }
+        } else if (!data.found && status === 'loading') {
+          // 未找到支付记录，显示等待状态
+          setSubscriptionDetails({
+            status: 'pending',
+            message: '等待支付确认...'
+          });
         }
       }
     } catch (error) {
-      console.error('Error fetching subscription details:', error);
-      // 如果获取失败，使用默认数据
-      setSubscriptionDetails({
-        plan: 'Pro Plan',
-        credits: 0,
-        totalCredits: 0,
-        interval: 'year',
-        amount: '$99.00',
-        status: 'pending',
-        currentPeriodEnd: null,
-        userId: null,
-        email: null
+      console.error('Error checking payment status:', error);
+      console.error('Error details:', {
+        userId,
+        checkoutId: creemDetails?.checkout_id,
+        error
       });
+      // 如果获取失败，设置错误状态
+      if (status === 'loading') {
+        setStatus('error');
+        setMessage('检查支付状态时出错，请刷新页面重试。');
+      }
     }
   };
 
@@ -243,63 +297,50 @@ function PaymentResultContent() {
               textAlign: 'left'
             }}>
               <h3 style={{ color: '#166534', marginBottom: '1rem', fontSize: '1.25rem' }}>
-                🎉 订阅详情
+                💳 支付详情
               </h3>
               {subscriptionDetails && (
                 <div style={{ display: 'grid', gap: '0.75rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#15803d' }}>订阅计划：</span>
-                    <span style={{ fontWeight: 'bold', color: '#166534' }}>
-                      {subscriptionDetails.plan}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#15803d' }}>积分余额：</span>
-                    <span style={{ fontWeight: 'bold', color: '#166534' }}>
-                      {subscriptionDetails.credits} 积分
-                      {subscriptionDetails.totalCredits > 0 && (
-                        <span style={{ fontSize: '0.875rem', color: '#6b7280', marginLeft: '0.5rem' }}>
-                          (总计: {subscriptionDetails.totalCredits})
-                        </span>
-                      )}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#15803d' }}>计费周期：</span>
-                    <span style={{ fontWeight: 'bold', color: '#166534' }}>
-                      {subscriptionDetails.interval === 'monthly' ? '月付' : '年付'}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#15803d' }}>支付金额：</span>
-                    <span style={{ fontWeight: 'bold', color: '#166534' }}>
-                      {subscriptionDetails.amount}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: '#15803d' }}>状态：</span>
+                    <span style={{ color: '#15803d' }}>支付状态：</span>
                     <span style={{ 
                       fontWeight: 'bold', 
-                      color: subscriptionDetails.status === 'active' ? '#166534' : 
+                      color: subscriptionDetails.status === 'success' ? '#166534' : 
                              subscriptionDetails.status === 'pending' ? '#ca8a04' : '#991b1b'
                     }}>
-                      {subscriptionDetails.status === 'active' ? '✅ 已激活' : 
-                       subscriptionDetails.status === 'pending' ? '⏳ 待激活' : '❌ 已过期'}
+                      {subscriptionDetails.status === 'success' ? '✅ 支付成功' : 
+                       subscriptionDetails.status === 'pending' ? '⏳ 处理中' : '❌ 支付失败'}
                     </span>
                   </div>
-                  {subscriptionDetails.currentPeriodEnd && (
+                  {subscriptionDetails.amount && (
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: '#15803d' }}>到期时间：</span>
+                      <span style={{ color: '#15803d' }}>支付金额：</span>
                       <span style={{ fontWeight: 'bold', color: '#166534' }}>
-                        {formatDateTime(subscriptionDetails.currentPeriodEnd)}
+                        {subscriptionDetails.amount} {subscriptionDetails.currency}
                       </span>
                     </div>
                   )}
-                  {subscriptionDetails.userId && (
+                  {subscriptionDetails.createdAt && (
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: '#15803d' }}>用户ID：</span>
+                      <span style={{ color: '#15803d' }}>支付时间：</span>
+                      <span style={{ fontWeight: 'bold', color: '#166534' }}>
+                        {formatDateTime(subscriptionDetails.createdAt)}
+                      </span>
+                    </div>
+                  )}
+                  {subscriptionDetails.checkoutId && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#15803d' }}>订单号：</span>
                       <span style={{ fontFamily: 'monospace', color: '#166534', fontSize: '0.875rem' }}>
-                        {subscriptionDetails.userId}
+                        {subscriptionDetails.checkoutId}
+                      </span>
+                    </div>
+                  )}
+                  {subscriptionDetails.subscriptionId && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#15803d' }}>订阅ID：</span>
+                      <span style={{ fontFamily: 'monospace', color: '#166534', fontSize: '0.875rem' }}>
+                        {subscriptionDetails.subscriptionId}
                       </span>
                     </div>
                   )}
@@ -437,11 +478,64 @@ function PaymentResultContent() {
           </a>
         </div>
         
+        {status === 'loading' && subscriptionDetails && (
+          <div style={{
+            backgroundColor: '#f8fafc',
+            padding: '1.5rem',
+            borderRadius: '0.5rem',
+            marginBottom: '2rem',
+            textAlign: 'left'
+          }}>
+            <h3 style={{ color: '#475569', marginBottom: '1rem', fontSize: '1.25rem' }}>
+              ⏳ 支付确认中
+            </h3>
+            <div style={{ display: 'grid', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#64748b' }}>订单号：</span>
+                <span style={{ fontFamily: 'monospace', color: '#475569', fontSize: '0.875rem' }}>
+                  {subscriptionDetails.checkoutId || creemDetails?.checkout_id}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {status === 'error' && (
-          <div style={{ marginTop: '2rem', padding: '1rem', backgroundColor: '#fef2f2', borderRadius: '0.5rem' }}>
-            <p style={{ color: '#991b1b', marginBottom: '1rem' }}>
-              如果问题持续存在，请尝试以下操作：
-            </p>
+          <>
+            {subscriptionDetails && (
+              <div style={{
+                backgroundColor: '#fef2f2',
+                padding: '1.5rem',
+                borderRadius: '0.5rem',
+                marginBottom: '2rem',
+                textAlign: 'left'
+              }}>
+                <h3 style={{ color: '#991b1b', marginBottom: '1rem', fontSize: '1.25rem' }}>
+                  ❌ 支付详情
+                </h3>
+                <div style={{ display: 'grid', gap: '0.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#7f1d1d' }}>支付状态：</span>
+                    <span style={{ fontWeight: 'bold', color: '#991b1b' }}>
+                      支付失败
+                    </span>
+                  </div>
+                  {subscriptionDetails.checkoutId && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#7f1d1d' }}>订单号：</span>
+                      <span style={{ fontFamily: 'monospace', color: '#991b1b', fontSize: '0.875rem' }}>
+                        {subscriptionDetails.checkoutId}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            <div style={{ marginTop: '2rem', padding: '1rem', backgroundColor: '#fef2f2', borderRadius: '0.5rem' }}>
+              <p style={{ color: '#991b1b', marginBottom: '1rem' }}>
+                如果问题持续存在，请尝试以下操作：
+              </p>
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
               <a
                 href="/test-payment"
@@ -486,7 +580,7 @@ function PaymentResultContent() {
                 查看账户状态
               </a>
             </div>
-          </div>
+          </>
         )}
         
         <div style={{ marginTop: '2rem', fontSize: '0.875rem', color: '#6b7280' }}>
