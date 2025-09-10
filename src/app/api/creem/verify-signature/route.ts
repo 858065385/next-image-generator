@@ -33,11 +33,11 @@ export async function POST(req: NextRequest) {
     console.log('   Received signature:', signature);
     
     // 使用 Return URL Signature 密钥，不是 Webhook Secret
-    const returnSignatureSecret = process.env.CREEM_RETURN_SIGNATURE;
+    const returnSignatureSecret = process.env.CREEM_RETURN_SECRET;
     
     if (!returnSignatureSecret) {
       return NextResponse.json(
-        { error: 'CREEM_RETURN_SIGNATURE not configured' },
+        { error: 'CREEM_RETURN_SECRET not configured' },
         { status: 500 }
       );
     }
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
       expectedSignature,
       receivedSignature: signature,
       rawQueryString,
-      returnSignatureSecretConfigured: !!returnSignatureSecret
+      returnSecretConfigured: !!returnSignatureSecret
     });
   } catch (error) {
     console.error('Error verifying Creem return URL signature:', error);
