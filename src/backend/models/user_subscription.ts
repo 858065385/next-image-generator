@@ -1,5 +1,5 @@
 import { getDb } from "../config/db";
-import { UserSubscription } from "../type/type";
+import { UserSubscription } from "../types/type";
 export async function getByUserIdAndStatus(user_id: string, status: string[]) {
   const db = await getDb();
   const res = await db.query(

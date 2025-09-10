@@ -1,4 +1,4 @@
-import { CreditUsage } from "../type/type";
+import { CreditUsage } from "../types/type";
 import { getDb } from "../config/db";
 export async function create(creditUsage: CreditUsage) {
   const db = await getDb();

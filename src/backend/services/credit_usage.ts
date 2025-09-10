@@ -1,5 +1,5 @@
 import { create, getByUserId, reducePeriodRemainCount, update } from "../models/credit_usage";
-import { CreditUsage } from "../type/type";
+import { CreditUsage } from "../types/type";
 
 export async function createCreditUsage(creditUsage: CreditUsage) {
   return await create(creditUsage);

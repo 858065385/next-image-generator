@@ -1,5 +1,5 @@
 import { getDb } from "../config/db";
-import { UserSubscriptionInfo } from "../type/domain/user_subscription_info";
+import { UserSubscriptionInfo } from "../types/domain/user_subscription_info";
 
 export async function getUserSubscriptionInfoOptimized(user_id: string) {
   const db = await getDb();

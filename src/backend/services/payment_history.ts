@@ -1,4 +1,4 @@
-import { PaymentHistory } from "../type/type";
+import { PaymentHistory } from "../types/type";
 import { create, update, getById, hasSuccessfulPaymentByUserId } from "../models/payment_history";
 
 export async function createPaymentHistory(paymentHistory: PaymentHistory) {

@@ -1,4 +1,21 @@
-// Creem API 客户端封装
+/**
+ * Creem 工具库 - 工具库层
+ * 
+ * 作用：
+ * - 封装与 Creem API 的所有通信
+ * - 提供纯算法函数（如签名验证）
+ * - 作为底层工具，被其他层调用
+ * 
+ * 设计原则：
+ * - 不处理 HTTP 请求
+ * - 不包含业务逻辑
+ * - 只提供可复用的工具函数
+ * 
+ * 使用场景：
+ * - API 路由层调用验证函数
+ * - 服务层调用 Creem API
+ * - 单元测试
+ */
 import crypto from 'crypto';
 
 export interface CreemCheckoutSession {
@@ -101,17 +118,37 @@ export class CreemClient {
   }
 }
 
-// Webhook 签名验证
+/**
+ * Creem Webhook 签名验证函数
+ * 
+ * 算法说明：
+ * - 使用 HMAC-SHA256 算法
+ * - 使用 Webhook Secret 作为密钥
+ * - 对原始请求体（raw body）进行签名验证
+ * 
+ * 验证流程：
+ * 1. 使用 webhook secret 创建 HMAC 对象
+ * 2. 更新原始请求体数据
+ * 3. 计算 SHA256 哈希值
+ * 4. 与接收到的签名进行不区分大小写的比较
+ * 
+ * @param payload - 原始请求体字符串
+ * @param signature - 从 HTTP 头接收到的签名
+ * @param secret - Webhook Secret
+ * @returns 签名是否有效
+ */
 export function verifyCreemWebhook(
   payload: string,
   signature: string,
   secret: string
 ): boolean {
+  // 步骤 1-3: 使用 HMAC-SHA256 计算期望的签名
   const expectedSignature = crypto
-    .createHmac('sha256', secret)
-    .update(payload, 'utf8')
-    .digest('hex');
+    .createHmac('sha256', secret)  // 使用 webhook secret
+    .update(payload, 'utf8')      // 原始请求体
+    .digest('hex');               // SHA256 哈希
   
+  // 步骤 4: 不区分大小写比较签名
   return signature.toLowerCase() === expectedSignature.toLowerCase();
 }
 

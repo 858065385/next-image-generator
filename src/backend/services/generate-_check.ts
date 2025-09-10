@@ -1,6 +1,6 @@
-import { ResponseCodeEnum } from "@/backend/type/enum/response_code_enum";
-import { getUserByUuidAndEmail, getUserByEmail } from "@/backend/service/user";
-import { checkCreditUsageByUserId } from "@/backend/service/credit_usage";
+import { ResponseCodeEnum } from "@/backend/types/enum/response_code_enum";
+import { getUserByUuidAndEmail, getUserByEmail } from "@/backend/services/user";
+import { checkCreditUsageByUserId } from "@/backend/services/credit_usage";
 
 
 export async function generateCheck(user_id: string, user_email: string, credit: string) {

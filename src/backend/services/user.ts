@@ -1,4 +1,4 @@
-import { User } from "../type/type";
+import { User } from "../types/type";
 import { insertUser, getByEmail, searchUsersByKeyword, getAllUsersWithPagination } from "../models/user";
 import { getByUuidAndEmail } from "../models/user";
 

@@ -1,5 +1,5 @@
 import { getDb } from "../config/db";
-import { SubscriptionPlan } from "../type/type";
+import { SubscriptionPlan } from "../types/type";
 
 function formatSubscriptionPlan(row: any): SubscriptionPlan {
   return {

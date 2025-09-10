@@ -1,5 +1,5 @@
-import { toEffectResultInfo } from "../type/domain/effect_result_info";
-import { EffectResult } from "../type/type";
+import { toEffectResultInfo } from "../types/domain/effect_result_info";
+import { EffectResult } from "../types/type";
 import {
   countByUserId,
   create,
@@ -7,7 +7,7 @@ import {
   getByResultIdAndUserId,
   pageListByUserId,
 } from "../models/effect_result";
-import { toEffectResultInfos } from "../type/domain/effect_result_info";
+import { toEffectResultInfos } from "../types/domain/effect_result_info";
 import { update } from "../models/effect_result";
 import { uploadImageToR2, uploadVideoToR2 } from "../lib/r2";
 

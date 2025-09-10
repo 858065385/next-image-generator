@@ -1,6 +1,6 @@
 // Creem Webhook 事件处理服务
 import { getDb } from "../config/db";
-import { CreemWebhookEvent } from "../type/creem";
+import { CreemWebhookEvent } from "../types/creem";
 
 export async function createWebhookEvent(event: CreemWebhookEvent) {
   const db = getDb();

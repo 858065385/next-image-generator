@@ -1,5 +1,5 @@
 import { getDb } from "../config/db";
-import { EffectResult } from "../type/type";
+import { EffectResult } from "../types/type";
 
 export async function create(effectResult: EffectResult) {
   const db = getDb();

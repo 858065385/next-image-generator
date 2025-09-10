@@ -1,4 +1,4 @@
-import { Effect } from "@/backend/type/type";
+import { Effect } from "@/backe../types/type";
 import { getDb } from "../config/db";
 
 export async function listByType(type: number): Promise<Effect[]> {

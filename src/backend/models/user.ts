@@ -1,5 +1,5 @@
 import { getDb } from "../config/db";
-import { User } from "../type/type";
+import { User } from "../types/type";
 import { QueryResultRow } from "pg";
 
 export async function insertUser(user: User) {

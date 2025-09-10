@@ -1,5 +1,5 @@
 import { getDb } from "../config/db";
-import { PaymentHistory } from "../type/type";
+import { PaymentHistory } from "../types/type";
 
 export async function create(paymentHistory: PaymentHistory) {
   const db = await getDb();

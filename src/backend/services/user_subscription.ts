@@ -1,4 +1,4 @@
-import { UserSubscription } from "../type/type";
+import { UserSubscription } from "../types/type";
 import {
   create,
   update,
@@ -8,7 +8,7 @@ import {
 } from "../models/user_subscription";
 import { getByUserId as getCreditUsageByUserId } from "../models/credit_usage";
 import { getById } from "../models/subscription_plan";
-import { UserSubscriptionInfo } from "../type/domain/user_subscription_info";
+import { UserSubscriptionInfo } from "../types/domain/user_subscription_info";
 export async function createUserSubscription(userSubscription: UserSubscription) {
   return await create(userSubscription);
 }
