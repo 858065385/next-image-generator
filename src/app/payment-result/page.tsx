@@ -51,6 +51,19 @@ function PaymentResultContent() {
       // 验证签名
       if (signature && queryParams) {
         try {
+          // 获取完整的原始 query string（从 URL 中获取）
+          const fullUrl = typeof window !== 'undefined' ? window.location.search : '';
+          const rawQueryString = fullUrl.substring(1); // 去掉 '?'
+          
+          console.log('🔍 Debug - Payment Result Signature Verification:');
+          console.log('   Full URL search:', fullUrl);
+          console.log('   Raw query string:', rawQueryString);
+          console.log('   Extracted signature:', signature);
+          console.log('   Sorted query params:', queryParams);
+          console.log('   URL contains success=true:', window.location.search.includes('success=true'));
+          console.log('   Current timestamp:', new Date().toISOString());
+          
+          // 发送原始 query string 进行验证
           const response = await fetch('/api/creem/verify-signature', {
             method: 'POST',
             headers: {
@@ -58,18 +71,20 @@ function PaymentResultContent() {
             },
             body: JSON.stringify({
               signature,
-              queryParams
+              rawQueryString
             }),
           });
           
           const result = await response.json();
           
           if (result.valid) {
-            console.log('Signature verification successful');
+            console.log('✅ Signature verification successful');
           } else {
             // 签名验证失败，但仍继续处理（可能是配置问题）
-            console.warn('Signature verification failed, but continuing processing:', result);
-            console.warn('This might be due to CREEM_WEBHOOK_SECRET configuration');
+            console.warn('⚠️ Signature verification failed, but continuing processing:', result);
+            console.warn('   Expected:', result.expectedSignature);
+            console.warn('   Received:', result.receivedSignature);
+            console.warn('   This might be due to CREEM_WEBHOOK_SECRET configuration');
           }
           
           // 不管签名验证结果如何，都处理支付结果
@@ -240,7 +255,7 @@ function PaymentResultContent() {
     } catch (error) {
       console.error('Error checking payment status:', error);
       console.error('Error details:', {
-        userId,
+        userId: userId ?? '[null]',
         checkoutId: creemDetails?.checkout_id,
         error
       });
