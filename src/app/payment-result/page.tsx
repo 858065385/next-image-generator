@@ -162,9 +162,10 @@ function PaymentResultContent() {
   }, [searchParams]);
   
   const checkPaymentStatus = async () => {
+    // 按优先级获取用户 ID
+    let userId = null;
+    
     try {
-      // 按优先级获取用户 ID
-      let userId = null;
       
       // 1. 从 localStorage 获取（之前保存的）
       userId = localStorage.getItem('userId');
