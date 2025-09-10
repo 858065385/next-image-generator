@@ -36,15 +36,17 @@ export default function TestSignaturePage() {
 
   const testWithCurrentUrl = () => {
     if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      const fullSearch = url.search;
-      const [qs, sig] = fullSearch.substring(1).split('&signature=');
+      const fullSearch = window.location.search;
+      const fullQS = fullSearch.substring(1);
+      const [qs, sig] = fullQS.split('&signature=');
       
       setRawQueryString(qs || '');
       setSignature(sig || '');
       
       console.log('📋 Extracted from URL:');
-      console.log('   Raw Query String:', qs);
+      console.log('   Full search:', fullSearch);
+      console.log('   Full query string:', fullQS);
+      console.log('   Raw query string (without signature):', qs);
       console.log('   Signature:', sig);
     }
   };
@@ -100,7 +102,7 @@ export default function TestSignaturePage() {
             borderRadius: '0.25rem',
             fontFamily: 'monospace'
           }}
-          placeholder="Paste the raw query string here (without the ? or &signature=)"
+  placeholder="Paste the raw query string here (without the ? and without &signature=...)"
         />
       </div>
 

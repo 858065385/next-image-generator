@@ -40,19 +40,23 @@ function PaymentResultContent() {
         setMessage('支付成功！正在确认订单状态...');
       }
       
-      // 获取完整的原始查询字符串（从 URL 中获取）
+      // 获取完整的查询字符串并正确分割
       const fullUrl = typeof window !== 'undefined' ? window.location.search : '';
-      const rawQueryString = fullUrl.substring(1); // 去掉 '?'
+      const fullQS = fullUrl.substring(1); // 去掉 '?'
+      
+      // 切掉最后的 '&signature=...' 及其值
+      const [rawQueryString, receivedSignature] = fullQS.split("&signature=");
       
       console.log('🔍 Debug - Payment Result Signature Verification:');
       console.log('   Full URL search:', fullUrl);
-      console.log('   Raw query string:', rawQueryString);
-      console.log('   Extracted signature:', signature);
+      console.log('   Full query string:', fullQS);
+      console.log('   Raw query string (without signature):', rawQueryString);
+      console.log('   Received signature:', receivedSignature);
       console.log('   URL contains success=true:', window.location.search.includes('success=true'));
       console.log('   Current timestamp:', new Date().toISOString());
       
-      // 验证签名 - 使用原始查询字符串
-      if (signature && rawQueryString) {
+      // 验证签名 - 使用不包含 signature 部分的原始查询字符串
+      if (receivedSignature && rawQueryString) {
         try {
           // 发送原始 query string 进行验证
           const response = await fetch('/api/creem/verify-signature', {
@@ -61,7 +65,7 @@ function PaymentResultContent() {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              signature,
+              signature: receivedSignature,
               rawQueryString
             }),
           });
