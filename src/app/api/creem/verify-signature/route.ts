@@ -68,15 +68,20 @@ export async function POST(req: NextRequest) {
       }
     });
     
-    // 按照官方文档：Object.entries(params) 并排序
-    const sortedEntries = Object.entries(params).sort(([a], [b]) => a.localeCompare(b));
-    console.log('🔍 Sorted parameters:', sortedEntries);
+    // 按照官方文档：使用固定顺序确保一致性
+    const fixedOrder = ['checkout_id', 'order_id', 'customer_id', 'subscription_id', 'product_id', 'request_id'];
+    const canonical = [];
+    
+    for (const key of fixedOrder) {
+      if (params[key]) {
+        canonical.push(`${key}=${params[key]}`);
+      }
+    }
+    
+    console.log('🔍 Parameters in fixed order:', canonical);
     
     // 完全按照文档实现
-    const data = sortedEntries
-      .map(([key, value]) => `${key}=${value}`)
-      .concat(`salt=${apiKey}`)
-      .join('|');
+    const data = canonical.concat(`salt=${apiKey}`).join('|');
     
     console.log('🔍 Generated data string:', data);
     console.log('🔍 API Key used:', apiKey);
