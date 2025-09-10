@@ -40,29 +40,20 @@ function PaymentResultContent() {
         setMessage('支付成功！正在确认订单状态...');
       }
       
-      // 构建查询字符串（按字母顺序排序以确保一致性）
-      const queryParams = Object.keys(params)
-        .sort()
-        .map(key => `${key}=${encodeURIComponent(params[key])}`)
-        .join('&');
+      // 获取完整的原始查询字符串（从 URL 中获取）
+      const fullUrl = typeof window !== 'undefined' ? window.location.search : '';
+      const rawQueryString = fullUrl.substring(1); // 去掉 '?'
       
-      console.log('Sorted and encoded query params:', queryParams);
+      console.log('🔍 Debug - Payment Result Signature Verification:');
+      console.log('   Full URL search:', fullUrl);
+      console.log('   Raw query string:', rawQueryString);
+      console.log('   Extracted signature:', signature);
+      console.log('   URL contains success=true:', window.location.search.includes('success=true'));
+      console.log('   Current timestamp:', new Date().toISOString());
       
-      // 验证签名
-      if (signature && queryParams) {
+      // 验证签名 - 使用原始查询字符串
+      if (signature && rawQueryString) {
         try {
-          // 获取完整的原始 query string（从 URL 中获取）
-          const fullUrl = typeof window !== 'undefined' ? window.location.search : '';
-          const rawQueryString = fullUrl.substring(1); // 去掉 '?'
-          
-          console.log('🔍 Debug - Payment Result Signature Verification:');
-          console.log('   Full URL search:', fullUrl);
-          console.log('   Raw query string:', rawQueryString);
-          console.log('   Extracted signature:', signature);
-          console.log('   Sorted query params:', queryParams);
-          console.log('   URL contains success=true:', window.location.search.includes('success=true'));
-          console.log('   Current timestamp:', new Date().toISOString());
-          
           // 发送原始 query string 进行验证
           const response = await fetch('/api/creem/verify-signature', {
             method: 'POST',
@@ -84,7 +75,7 @@ function PaymentResultContent() {
             console.warn('⚠️ Signature verification failed, but continuing processing:', result);
             console.warn('   Expected:', result.expectedSignature);
             console.warn('   Received:', result.receivedSignature);
-            console.warn('   This might be due to CREEM_WEBHOOK_SECRET configuration');
+            console.warn('   This might be due to CREEM_RETURN_SIGNATURE configuration');
           }
           
           // 不管签名验证结果如何，都处理支付结果

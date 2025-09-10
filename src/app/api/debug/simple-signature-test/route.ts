@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     }
     
     // 使用提供的 secret 或环境变量
-    const secret = webhookSecret || process.env.CREEM_WEBHOOK_SECRET;
+    const secret = webhookSecret || process.env.CREEM_RETURN_SIGNATURE;
     
     if (!secret) {
       return NextResponse.json(
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
       rawQueryString,
       expectedSignature,
       extractedSignature,
-      secretConfigured: true,
+      returnSignatureSecretConfigured: true,
       secretLength: secret.length
     });
   } catch (error) {
