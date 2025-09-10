@@ -13,7 +13,6 @@ function PaymentResultContent() {
   const pollingIntervalRef = useRef<NodeJS.Timeout>();
   
   useEffect(() => {
-    
     const verifySignature = async () => {
       const success = searchParams.get('success');
       const signature = searchParams.get('signature');
@@ -98,21 +97,38 @@ function PaymentResultContent() {
         } catch (error) {
           console.error('Error verifying signature:', error);
           setStatus('error');
-          setMessage('验证支付状态时出错。');
+          setMessage('验证支付签名时出错。');
         }
       } else {
-        // 没有签名，显示警告但仍处理
-        setStatus('loading');
-        setMessage('警告：支付结果未经验证，请联系客服确认。');
+        // 没有签名参数，直接处理
+        const checkoutId = params.checkout_id;
+        const orderId = params.order_id;
         
-        // 仍然尝试检查支付状态
-        await checkPaymentStatus();
+        setCreemDetails({
+          checkout_id: checkoutId,
+          order_id: orderId
+        });
+        
+        if (success === 'true' || success === '1') {
+          setStatus('success');
+          setMessage('支付成功！感谢您的订阅。');
+          await checkPaymentStatus();
+        } else if (success === 'false' || success === '0') {
+          setStatus('error');
+          setMessage('支付失败或已取消。');
+        } else {
+          setStatus('loading');
+          setMessage('正在处理支付结果...');
+          await checkPaymentStatus();
+          pollingIntervalRef.current = setInterval(async () => {
+            await checkPaymentStatus();
+          }, 3000);
+        }
       }
     };
     
     verifySignature();
     
-    // 清理函数
     return () => {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current);
@@ -183,8 +199,8 @@ function PaymentResultContent() {
             checkoutId: data.payment.checkoutId,
             subscriptionId: data.payment.subscriptionId,
             createdAt: data.payment.createdAt,
-            userId: sessionData.user.id,
-            email: sessionData.user.email
+            userId: userId,
+            email: data.payment.email
           });
           
           // 根据支付状态更新页面状态
@@ -377,16 +393,11 @@ function PaymentResultContent() {
                   </div>
                 )}
                 {creemDetails.payment_id && (
-                  <div>
+                  <div style={{ marginBottom: '0.25rem' }}>
                     <span style={{ color: '#075985' }}>Payment ID: </span>
                     <span style={{ fontFamily: 'monospace', color: '#0c4a6e' }}>
                       {creemDetails.payment_id}
                     </span>
-                  </div>
-                )}
-                {creemParams && (
-                  <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid #e0f2fe' }}>
-                    <span style={{ color: '#075985' }}>🔒 签名验证：已通过</span>
                   </div>
                 )}
               </div>
@@ -419,64 +430,6 @@ function PaymentResultContent() {
             </div>
           </>
         )}
-        
-        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <a
-            href="/admin-enhanced"
-            style={{
-              display: 'inline-block',
-              padding: '0.875rem 1.75rem',
-              backgroundColor: status === 'success' ? '#22c55e' : '#3b82f6',
-              color: 'white',
-              textDecoration: 'none',
-              borderRadius: '0.5rem',
-              fontWeight: 'bold',
-              fontSize: '1.125rem',
-              transition: 'all 0.2s',
-              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.backgroundColor = status === 'success' ? '#16a34a' : '#2563eb';
-              e.currentTarget.style.transform = 'translateY(-1px)';
-              e.currentTarget.style.boxShadow = '0 8px 12px -1px rgba(0, 0, 0, 0.15)';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.backgroundColor = status === 'success' ? '#22c55e' : '#3b82f6';
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
-            }}
-          >
-            🚀 开始使用
-          </a>
-          
-          <a
-            href="/"
-            style={{
-              display: 'inline-block',
-              padding: '0.875rem 1.75rem',
-              backgroundColor: '#6b7280',
-              color: 'white',
-              textDecoration: 'none',
-              borderRadius: '0.5rem',
-              fontWeight: 'bold',
-              fontSize: '1.125rem',
-              transition: 'all 0.2s',
-              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-            }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.backgroundColor = '#4b5563';
-              e.currentTarget.style.transform = 'translateY(-1px)';
-              e.currentTarget.style.boxShadow = '0 8px 12px -1px rgba(0, 0, 0, 0.15)';
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.backgroundColor = '#6b7280';
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
-            }}
-          >
-            🏠 返回首页
-          </a>
-        </div>
         
         {status === 'loading' && subscriptionDetails && (
           <div style={{
@@ -536,52 +489,83 @@ function PaymentResultContent() {
               <p style={{ color: '#991b1b', marginBottom: '1rem' }}>
                 如果问题持续存在，请尝试以下操作：
               </p>
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <a
-                href="/test-payment"
-                style={{
-                  display: 'inline-block',
-                  padding: '0.75rem 1.5rem',
-                  backgroundColor: '#ef4444',
-                  color: 'white',
-                  textDecoration: 'none',
-                  borderRadius: '0.375rem',
-                  fontWeight: 'bold',
-                  transition: 'all 0.2s'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.backgroundColor = '#dc2626';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.backgroundColor = '#ef4444';
-                }}
-              >
-                重新尝试支付
-              </a>
-              <a
-                href="/admin-enhanced"
-                style={{
-                  display: 'inline-block',
-                  padding: '0.75rem 1.5rem',
-                  backgroundColor: '#6b7280',
-                  color: 'white',
-                  textDecoration: 'none',
-                  borderRadius: '0.375rem',
-                  fontWeight: 'bold',
-                  transition: 'all 0.2s'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.backgroundColor = '#4b5563';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.backgroundColor = '#6b7280';
-                }}
-              >
-                查看账户状态
-              </a>
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <a
+                  href="/test-payment"
+                  style={{
+                    display: 'inline-block',
+                    padding: '0.75rem 1.5rem',
+                    backgroundColor: '#ef4444',
+                    color: 'white',
+                    textDecoration: 'none',
+                    borderRadius: '0.375rem',
+                    fontWeight: 'bold',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.backgroundColor = '#dc2626';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.backgroundColor = '#ef4444';
+                  }}
+                >
+                  重新尝试支付
+                </a>
+                <a
+                  href="/admin-enhanced"
+                  style={{
+                    display: 'inline-block',
+                    padding: '0.75rem 1.5rem',
+                    backgroundColor: '#6b7280',
+                    color: 'white',
+                    textDecoration: 'none',
+                    borderRadius: '0.375rem',
+                    fontWeight: 'bold',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.backgroundColor = '#4b5563';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.backgroundColor = '#6b7280';
+                  }}
+                >
+                  查看账户状态
+                </a>
+              </div>
             </div>
           </>
         )}
+        
+        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <a
+            href="/"
+            style={{
+              display: 'inline-block',
+              padding: '0.875rem 1.75rem',
+              backgroundColor: status === 'success' ? '#22c55e' : '#3b82f6',
+              color: 'white',
+              textDecoration: 'none',
+              borderRadius: '0.5rem',
+              fontWeight: 'bold',
+              fontSize: '1.125rem',
+              transition: 'all 0.2s',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = status === 'success' ? '#16a34a' : '#2563eb';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+              e.currentTarget.style.boxShadow = '0 8px 12px -1px rgba(0, 0, 0, 0.15)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = status === 'success' ? '#22c55e' : '#3b82f6';
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+            }}
+          >
+            🏠 返回首页
+          </a>
+        </div>
         
         <div style={{ marginTop: '2rem', fontSize: '0.875rem', color: '#6b7280' }}>
           <p>交易时间：{formatDateTime(Date.now())}</p>
@@ -617,34 +601,34 @@ export default function PaymentResultPage() {
   return (
     <Suspense fallback={
       <div style={{ 
-        maxWidth: '800px', 
-        margin: '0 auto', 
-        padding: '2rem',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-        textAlign: 'center'
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '100vh',
+        fontFamily: 'system-ui, -apple-system, sans-serif'
       }}>
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center',
-          gap: '1rem'
-        }}>
+        <div style={{ textAlign: 'center' }}>
           <div style={{ 
-            width: '24px', 
-            height: '24px', 
-            border: '3px solid #e5e7eb',
-            borderTop: '3px solid #3b82f6',
+            width: '60px', 
+            height: '60px', 
+            margin: '0 auto 1rem',
             borderRadius: '50%',
-            animation: 'spin 1s linear infinite'
-          }}></div>
-          <span>加载中...</span>
+            backgroundColor: '#e5e7eb',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <div style={{ 
+              width: '32px', 
+              height: '32px', 
+              border: '3px solid #f3f4f6',
+              borderTopColor: '#3b82f6',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite'
+            }}></div>
+          </div>
+          <p style={{ color: '#6b7280' }}>加载中...</p>
         </div>
-        <style jsx>{`
-          @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-          }
-        `}</style>
       </div>
     }>
       <PaymentResultContent />
