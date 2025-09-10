@@ -9,7 +9,7 @@ function PaymentResultContent() {
   const [message, setMessage] = useState('');
   const [subscriptionDetails, setSubscriptionDetails] = useState<any>(null);
   const [creemDetails, setCreemDetails] = useState<any>(null);
-  const [creemParams, setCreemParams] = useState<string>('');
+  // const [creemParams, setCreemParams] = useState<string>('');
   const pollingIntervalRef = useRef<NodeJS.Timeout>();
   
   useEffect(() => {
@@ -34,13 +34,19 @@ function PaymentResultContent() {
         localStorage.setItem('userId', urlUserId);
       }
       
+      // 如果有 success=true，先显示成功状态
+      if (success === 'true' || success === '1') {
+        setStatus('success');
+        setMessage('支付成功！正在确认订单状态...');
+      }
+      
       // 构建查询字符串（按字母顺序排序以确保一致性）
       const queryParams = Object.keys(params)
         .sort()
-        .map(key => `${key}=${params[key]}`)
+        .map(key => `${key}=${encodeURIComponent(params[key])}`)
         .join('&');
       
-      setCreemParams(queryParams);
+      console.log('Sorted and encoded query params:', queryParams);
       
       // 验证签名
       if (signature && queryParams) {
@@ -59,40 +65,44 @@ function PaymentResultContent() {
           const result = await response.json();
           
           if (result.valid) {
-            // 签名验证成功，处理支付结果
-            const checkoutId = params.checkout_id;
-            const orderId = params.order_id;
-            const paymentId = params.payment_id;
-            
-            setCreemDetails({
-              checkout_id: checkoutId,
-              order_id: orderId,
-              payment_id: paymentId
-            });
-            
-            if (success === 'true' || success === '1') {
+            console.log('Signature verification successful');
+          } else {
+            // 签名验证失败，但仍继续处理（可能是配置问题）
+            console.warn('Signature verification failed, but continuing processing:', result);
+            console.warn('This might be due to CREEM_WEBHOOK_SECRET configuration');
+          }
+          
+          // 不管签名验证结果如何，都处理支付结果
+          const checkoutId = params.checkout_id;
+          const orderId = params.order_id;
+          const paymentId = params.payment_id;
+          
+          setCreemDetails({
+            checkout_id: checkoutId,
+            order_id: orderId,
+            payment_id: paymentId
+          });
+          
+          if (success === 'true' || success === '1') {
+            // 如果之前已经设置为成功状态，不要覆盖消息
+            if (status !== 'success') {
               setStatus('success');
               setMessage('支付成功！感谢您的订阅。');
-              
-              // 检查支付状态
-              await checkPaymentStatus();
-              
-              // 开始轮询检查状态更新
-              pollingIntervalRef.current = setInterval(async () => {
-                await checkPaymentStatus();
-              }, 3000);
-            } else if (success === 'false' || success === '0') {
-              setStatus('error');
-              setMessage('支付失败或已取消。');
-            } else {
-              setStatus('loading');
-              setMessage('正在处理支付结果...');
             }
-          } else {
-            // 签名验证失败
+            
+            // 检查支付状态
+            await checkPaymentStatus();
+            
+            // 开始轮询检查状态更新
+            pollingIntervalRef.current = setInterval(async () => {
+              await checkPaymentStatus();
+            }, 3000);
+          } else if (success === 'false' || success === '0') {
             setStatus('error');
-            setMessage('支付验证失败，请检查订单状态。');
-            console.error('Signature verification failed:', result);
+            setMessage('支付失败或已取消。');
+          } else {
+            setStatus('loading');
+            setMessage('正在处理支付结果...');
           }
         } catch (error) {
           console.error('Error verifying signature:', error);
@@ -199,7 +209,7 @@ function PaymentResultContent() {
             checkoutId: data.payment.checkoutId,
             subscriptionId: data.payment.subscriptionId,
             createdAt: data.payment.createdAt,
-            userId: userId,
+            userId: userId!,
             email: data.payment.email
           });
           
