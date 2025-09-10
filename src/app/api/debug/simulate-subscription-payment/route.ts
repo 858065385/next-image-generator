@@ -3,13 +3,13 @@ import {
   createUserSubscription,
   getUserSubscriptionByUserId,
   updateUserSubscription
-} from '@/backend/service/user_subscription';
+} from '@/backend/services/user_subscription';
 import {
   createCreditUsage,
   getCreditUsageByUserId,
   updateCreditUsage
-} from '@/backend/service/credit_usage';
-import { UserSubscriptionStatusEnum } from '@/backend/type/enum/user_subscription_enum';
+} from '@/backend/services/credit_usage';
+import { UserSubscriptionStatusEnum } from '@/backend/types/enum/user_subscription_enum';
 import { getById } from '@/backend/models/subscription_plan';
 
 export async function POST(request: NextRequest) {

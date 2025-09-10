@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserSubscriptionByUserId } from '@/backend/service/user_subscription';
-import { createUserSubscription } from '@/backend/service/user_subscription';
-import { getCreditUsageByUserId, updateCreditUsage } from '@/backend/service/credit_usage';
+import { getUserSubscriptionByUserId } from '@/backend/services/user_subscription';
+import { createUserSubscription } from '@/backend/services/user_subscription';
+import { getCreditUsageByUserId, updateCreditUsage } from '@/backend/services/credit_usage';
 import { getById } from '@/backend/models/subscription_plan';
 
 // 设置用户为月度会员
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
       });
     } else {
       // 创建新的积分记录
-      await require('@/backend/service/credit_usage').then(({ createCreditUsage }) => 
+      await require('@/backend/services/credit_usage').then(({ createCreditUsage }) => 
         createCreditUsage({
           user_id,
           user_subscriptions_id: newSubscription.id,

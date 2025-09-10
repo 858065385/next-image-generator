@@ -1,4 +1,4 @@
-import { getUserSubscriptionInfoByUserId } from "@/backend/service/user_subscription";
+import { getUserSubscriptionInfoByUserId } from "@/backend/services/user_subscription";
 
 export async function POST(request: Request) {
   const { user_id } = await request.json();

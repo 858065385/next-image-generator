@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import Replicate from "replicate";
-import { createEffectResult } from "@/backend/service/effect_result";
+import { createEffectResult } from "@/backend/services/effect_result";
 import { genEffectResultId } from "@/backend/utils/genId";
-import { generateCheck } from "@/backend/service/generate-_check";
+import { generateCheck } from "@/backend/services/generate-_check";
 
 const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,

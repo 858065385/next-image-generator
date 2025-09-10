@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { checkCreditUsageByUserId, reducePeriodRemainCountByUserId } from "@/backend/service/credit_usage";
+import { checkCreditUsageByUserId, reducePeriodRemainCountByUserId } from "@/backend/services/credit_usage";
 import Replicate from "replicate";
-import { ResponseCodeEnum } from "@/backend/type/enum/response_code_enum";
-import { createEffectResult } from "@/backend/service/effect_result";
+import { ResponseCodeEnum } from "@/backend/types/enum/response_code_enum";
+import { createEffectResult } from "@/backend/services/effect_result";
 import { genEffectResultId } from "@/backend/utils/genId";
-import { getUserByUuidAndEmail, getUserByEmail } from "@/backend/service/user";
+import { getUserByUuidAndEmail, getUserByEmail } from "@/backend/services/user";
 
 
 const replicate = new Replicate({

@@ -1,4 +1,4 @@
-import { checkUserHasSuccessfulPayment } from "@/backend/service/payment_history";
+import { checkUserHasSuccessfulPayment } from "@/backend/services/payment_history";
 
 export async function POST(request: Request) {
   try {

@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { authOptions } from "@/shared/lib/auth";
 
 export async function GET() {
   try {

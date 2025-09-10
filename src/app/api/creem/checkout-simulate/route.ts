@@ -1,26 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserByUuidAndEmail } from '@/backend/service/user';
-import { getSubscriptionPlan } from '@/backend/service/subscription_plan';
-import { getUserSubscriptionByUserIdAndStatus } from '@/backend/service/user_subscription';
-import { createPaymentHistory } from '@/backend/service/payment_history';
-import { PaymentHistory } from '@/backend/type/type';
-import { UserSubscriptionStatusEnum } from '@/backend/type/enum/user_subscription_enum';
-import { PaymentStatus } from '@/backend/type/enum/payment_status_enum';
+import { getUserByUuidAndEmail } from '@/backend/services/user';
+import { getSubscriptionPlan } from '@/backend/services/subscription_plan';
+import { getUserSubscriptionByUserIdAndStatus } from '@/backend/services/user_subscription';
+import { createPaymentHistory } from '@/backend/services/payment_history';
+import { PaymentHistory } from '@/backend/types/type';
+import { UserSubscriptionStatusEnum } from '@/backend/types/enum/user_subscription_enum';
+import { PaymentStatus } from '@/backend/types/enum/payment_status_enum';
 import {
   createUserSubscription,
   updateUserSubscription,
   getUserSubscriptionByUserId,
-} from '@/backend/service/user_subscription';
+} from '@/backend/services/user_subscription';
 import {
   createCreditUsage,
   getCreditUsageByUserId,
   updateCreditUsage,
-} from '@/backend/service/credit_usage';
-import { CreditUsage, UserSubscription } from '@/backend/type/type';
+} from '@/backend/services/credit_usage';
+import { CreditUsage, UserSubscription } from '@/backend/types/type';
 import {
   getPaymentHistoryById,
   updatePaymentHistory,
-} from '@/backend/service/payment_history';
+} from '@/backend/services/payment_history';
 
 export async function POST(request: NextRequest) {
   try {

@@ -2,29 +2,29 @@ export const dynamic = 'force-dynamic';
 
 import crypto from 'crypto';
 import { verifyCreemWebhook } from "@/backend/lib/creem";
-import { CreemWebhookPayload } from "@/backend/type/creem";
+import { CreemWebhookPayload } from "@/backend/types/creem";
 import {
   createWebhookEvent,
   isWebhookEventProcessed,
   markWebhookEventAsProcessed,
-} from "@/backend/service/creem_webhook";
+} from "@/backend/services/creem_webhook";
 import {
   createUserSubscription,
   updateUserSubscription,
   getUserSubscriptionByUserId,
-} from "@/backend/service/user_subscription";
+} from "@/backend/services/user_subscription";
 import {
   createCreditUsage,
   getCreditUsageByUserId,
   updateCreditUsage,
-} from "@/backend/service/credit_usage";
-import { CreditUsage, UserSubscription } from "@/backend/type/type";
+} from "@/backend/services/credit_usage";
+import { CreditUsage, UserSubscription } from "@/backend/types/type";
 import {
   getPaymentHistoryById,
   updatePaymentHistory,
   createPaymentHistory,
-} from "@/backend/service/payment_history";
-import { UserSubscriptionStatusEnum } from "@/backend/type/enum/user_subscription_enum";
+} from "@/backend/services/payment_history";
+import { UserSubscriptionStatusEnum } from "@/backend/types/enum/user_subscription_enum";
 
 export async function POST(req: Request) {
   // 1. 打印所有请求头

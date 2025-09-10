@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserSubscriptionInfoByUserId } from '@/backend/service/user_subscription';
-import { getUserSubscriptionInfoOptimized } from '@/backend/service/user_subscription_optimized';
+import { getUserSubscriptionInfoByUserId } from '@/backend/services/user_subscription';
+import { getUserSubscriptionInfoOptimized } from '@/backend/services/user_subscription_optimized';
 
 export async function POST(request: NextRequest) {
   try {

@@ -1,4 +1,4 @@
-import { updateEffectResult } from "@/backend/service/effect_result";
+import { updateEffectResult } from "@/backend/services/effect_result";
 import { uploadImageToR2 } from "@/backend/lib/r2";
 
 export async function POST(request: Request) {

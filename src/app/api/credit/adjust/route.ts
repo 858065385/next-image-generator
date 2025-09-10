@@ -4,7 +4,7 @@ import {
   reducePeriodRemainCountByUserId,
   checkCreditUsageByUserId,
   updateCreditUsage
-} from '@/backend/service/credit_usage';
+} from '@/backend/services/credit_usage';
 
 // 增加积分
 export async function POST(request: NextRequest) {

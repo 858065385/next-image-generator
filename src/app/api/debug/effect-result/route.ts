@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createEffectResult } from "@/backend/service/effect_result";
+import { createEffectResult } from "@/backend/services/effect_result";
 import { genEffectResultId } from "@/backend/utils/genId";
 
 export async function POST(request: NextRequest) {

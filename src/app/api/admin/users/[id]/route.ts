@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserByUuidAndEmail } from '@/backend/service/user';
-import { getUserSubscriptionInfoByUserId } from '@/backend/service/user_subscription';
-import { getCreditUsageByUserId } from '@/backend/service/credit_usage';
+import { getUserByUuidAndEmail } from '@/backend/services/user';
+import { getUserSubscriptionInfoByUserId } from '@/backend/services/user_subscription';
+import { getCreditUsageByUserId } from '@/backend/services/credit_usage';
 
 export async function GET(
   request: NextRequest,

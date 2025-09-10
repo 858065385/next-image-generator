@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCreditUsageByUserId } from '@/backend/service/credit_usage';
-import { pageListEffectResultsByUserId } from '@/backend/service/effect_result';
+import { getCreditUsageByUserId } from '@/backend/services/credit_usage';
+import { pageListEffectResultsByUserId } from '@/backend/services/effect_result';
 
 // 获取积分使用历史
 export async function POST(request: NextRequest) {

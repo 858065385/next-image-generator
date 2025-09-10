@@ -2,8 +2,8 @@ import {
   getEffectResultByOriginalId,
   updateEffectResult,
   updateEffectResultError,
-} from "@/backend/service/effect_result";
-import { reducePeriodRemainCountByUserId } from "@/backend/service/credit_usage";
+} from "@/backend/services/effect_result";
+import { reducePeriodRemainCountByUserId } from "@/backend/services/credit_usage";
 
 export const maxDuration = 60;
 

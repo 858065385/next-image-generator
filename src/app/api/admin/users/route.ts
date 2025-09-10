@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { searchUsers, getAllUsers } from '@/backend/service/user';
+import { searchUsers, getAllUsers } from '@/backend/services/user';
 
 export async function GET(request: NextRequest) {
   try {

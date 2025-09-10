@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { genUniSeq, getIsoTimestr } from "@/backend/utils";
-import { saveUser } from "@/backend/service/user";
-import { User } from "@/backend/type/type";
-import { createCreditUsage } from "@/backend/service/credit_usage";
-import { getCreditUsageByUserId } from "@/backend/service/credit_usage";
+import { saveUser } from "@/backend/services/user";
+import { User } from "@/backend/types/type";
+import { createCreditUsage } from "@/backend/services/credit_usage";
+import { getCreditUsageByUserId } from "@/backend/services/credit_usage";
 
 export async function POST(request: NextRequest) {
   try {

@@ -1,11 +1,11 @@
 import { creem } from "@/backend/lib/creem";
-import { getUserByUuidAndEmail } from "@/backend/service/user";
-import { getSubscriptionPlan } from "@/backend/service/subscription_plan";
-import { UserSubscriptionStatusEnum } from "@/backend/type/enum/user_subscription_enum";
-import { PaymentStatus } from "@/backend/type/enum/payment_status_enum";
-import { PaymentHistory } from "@/backend/type/type";
-import { createPaymentHistory } from "@/backend/service/payment_history";
-import { getUserSubscriptionByUserIdAndStatus } from "@/backend/service/user_subscription";
+import { getUserByUuidAndEmail } from "@/backend/services/user";
+import { getSubscriptionPlan } from "@/backend/services/subscription_plan";
+import { UserSubscriptionStatusEnum } from "@/backend/types/enum/user_subscription_enum";
+import { PaymentStatus } from "@/backend/types/enum/payment_status_enum";
+import { PaymentHistory } from "@/backend/types/type";
+import { createPaymentHistory } from "@/backend/services/payment_history";
+import { getUserSubscriptionByUserIdAndStatus } from "@/backend/services/user_subscription";
 
 export const maxDuration = 60;
 

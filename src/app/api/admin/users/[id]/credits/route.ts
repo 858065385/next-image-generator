@@ -3,8 +3,8 @@ import {
   getCreditUsageByUserId, 
   updateCreditUsage,
   createCreditUsage
-} from '@/backend/service/credit_usage';
-import { getUserByUuidAndEmail } from '@/backend/service/user';
+} from '@/backend/services/credit_usage';
+import { getUserByUuidAndEmail } from '@/backend/services/user';
 
 export async function POST(
   request: NextRequest,

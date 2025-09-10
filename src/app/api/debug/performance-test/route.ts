@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserSubscriptionInfoByUserId } from '@/backend/service/user_subscription';
+import { getUserSubscriptionInfoByUserId } from '@/backend/services/user_subscription';
 import { getDb } from '@/backend/config/db';
 
 export async function POST(request: NextRequest) {
