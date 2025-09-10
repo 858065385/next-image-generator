@@ -11,21 +11,41 @@ export default function TestSignaturePage() {
   const testSignature = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/creem/verify-signature', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          signature,
-          rawQueryString,
+      // 同时测试两个 API
+      const [simpleResponse, verifyResponse] = await Promise.all([
+        fetch('/api/debug/simple-signature-test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            rawQueryString,
+            webhookSecret: process.env.NEXT_PUBLIC_CREEM_WEBHOOK_SECRET,
+          }),
         }),
-      });
+        fetch('/api/creem/verify-signature', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            signature,
+            rawQueryString,
+          }),
+        })
+      ]);
 
-      const data = await response.json();
-      setResult(data);
+      const simpleData = await simpleResponse.json();
+      const verifyData = await verifyResponse.json();
       
-      console.log('🔍 Signature Test Result:', data);
+      setResult({
+        simpleTest: simpleData,
+        verifyTest: verifyData,
+        manualComparison: {
+          providedSignature: signature,
+          expectedSignature: simpleData.expectedSignature,
+          matches: signature === simpleData.expectedSignature
+        }
+      });
+      
+      console.log('🔍 Simple Signature Test Result:', simpleData);
+      console.log('🔍 Verify Signature Test Result:', verifyData);
     } catch (error) {
       console.error('Error testing signature:', error);
       setResult({ error: 'Failed to test signature' });
@@ -126,23 +146,71 @@ export default function TestSignaturePage() {
       </div>
 
       {result && (
-        <div style={{
-          marginTop: '2rem',
-          padding: '1rem',
-          backgroundColor: result.valid ? '#d1fae5' : '#fee2e2',
-          borderRadius: '0.5rem'
-        }}>
-          <h3 style={{ color: result.valid ? '#065f46' : '#991b1b' }}>
-            {result.valid ? '✅ Signature Valid' : '❌ Signature Invalid'}
-          </h3>
-          <pre style={{ 
-            marginTop: '1rem', 
-            fontSize: '0.875rem',
-            whiteSpace: 'pre-wrap',
-            color: result.valid ? '#065f46' : '#991b1b'
-          }}>
-            {JSON.stringify(result, null, 2)}
-          </pre>
+        <div style={{ marginTop: '2rem' }}>
+          {result.simpleTest && (
+            <div style={{
+              marginBottom: '1.5rem',
+              padding: '1rem',
+              backgroundColor: result.simpleTest.extractedSignature === result.simpleTest.expectedSignature ? '#d1fae5' : '#fee2e2',
+              borderRadius: '0.5rem'
+            }}>
+              <h3 style={{ color: result.simpleTest.extractedSignature === result.simpleTest.expectedSignature ? '#065f46' : '#991b1b' }}>
+                Simple Signature Test
+              </h3>
+              <div style={{ fontFamily: 'monospace', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+                <p>Expected: {result.simpleTest.expectedSignature}</p>
+                <p>Extracted from QS: {result.simpleTest.extractedSignature || '[None found]'}</p>
+                <p>Match: {result.simpleTest.extractedSignature === result.simpleTest.expectedSignature ? '✅' : '❌'}</p>
+              </div>
+            </div>
+          )}
+          
+          {result.verifyTest && (
+            <div style={{
+              marginBottom: '1.5rem',
+              padding: '1rem',
+              backgroundColor: result.verifyTest.valid ? '#d1fae5' : '#fee2e2',
+              borderRadius: '0.5rem'
+            }}>
+              <h3 style={{ color: result.verifyTest.valid ? '#065f46' : '#991b1b' }}>
+                Verify Signature Test
+              </h3>
+              <div style={{ fontFamily: 'monospace', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+                <p>Valid: {result.verifyTest.valid ? '✅' : '❌'}</p>
+                <p>Expected: {result.verifyTest.expectedSignature}</p>
+                <p>Received: {result.verifyTest.receivedSignature}</p>
+              </div>
+            </div>
+          )}
+          
+          {result.manualComparison && (
+            <div style={{
+              padding: '1rem',
+              backgroundColor: result.manualComparison.matches ? '#d1fae5' : '#fee2e2',
+              borderRadius: '0.5rem'
+            }}>
+              <h3 style={{ color: result.manualComparison.matches ? '#065f46' : '#991b1b' }}>
+                Manual Comparison
+              </h3>
+              <div style={{ fontFamily: 'monospace', fontSize: '0.875rem', marginTop: '0.5rem' }}>
+                <p>Your provided signature matches expected: {result.manualComparison.matches ? '✅' : '❌'}</p>
+              </div>
+            </div>
+          )}
+          
+          <details style={{ marginTop: '1rem' }}>
+            <summary style={{ cursor: 'pointer', fontWeight: 'bold' }}>Full Response Data</summary>
+            <pre style={{ 
+              marginTop: '1rem', 
+              fontSize: '0.75rem',
+              whiteSpace: 'pre-wrap',
+              backgroundColor: '#f3f4f6',
+              padding: '1rem',
+              borderRadius: '0.25rem'
+            }}>
+              {JSON.stringify(result, null, 2)}
+            </pre>
+          </details>
         </div>
       )}
 
