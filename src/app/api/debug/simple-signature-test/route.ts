@@ -26,9 +26,25 @@ export async function POST(req: NextRequest) {
     console.log('   Raw query string:', rawQueryString);
     console.log('   API Key:', apiKey.substring(0, 20) + '...');
     
-    // 按照文档：将参数用 | 连接，最后加上 salt=API_KEY
-    const params = rawQueryString.split('&');
-    const canonical = params.join('|') + `|salt=${apiKey}`;
+    // 按照 Creem 官方文档：解析 query string 并按字母顺序排序
+    const searchParams = new URLSearchParams(rawQueryString);
+    const params: Record<string, string> = {};
+    
+    // 提取所有参数（排除 signature）
+    searchParams.forEach((value, key) => {
+      if (key !== 'signature') {
+        params[key] = value;
+      }
+    });
+    
+    // 按字母顺序排序参数
+    const sortedEntries = Object.entries(params).sort(([a], [b]) => a.localeCompare(b));
+    
+    // 格式化为 key=value 并用 | 连接，最后加上 salt=API_KEY
+    const canonical = sortedEntries
+      .map(([key, value]) => `${key}=${value}`)
+      .concat(`salt=${apiKey}`)
+      .join('|');
     
     // 使用 SHA256 哈希（不是 HMAC）
     const expectedSignature = crypto
