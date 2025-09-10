@@ -42,14 +42,11 @@ export async function POST(req: NextRequest) {
       );
     }
     
-    // 按照 Creem 官方文档：解析 query string 并按字母顺序排序
+    // 按照 Creem 官方文档实现签名验证
     console.log('🔍 Raw query string before parsing:', rawQueryString);
     
-    // 尝试解码 URL 编码的参数
-    const decodedQueryString = decodeURIComponent(rawQueryString);
-    console.log('🔍 Decoded query string:', decodedQueryString);
-    
-    const searchParams = new URLSearchParams(decodedQueryString);
+    // 解析 query string
+    const searchParams = new URLSearchParams(rawQueryString);
     const params: Record<string, string> = {};
     
     // 提取所有参数（排除 signature）
@@ -61,26 +58,29 @@ export async function POST(req: NextRequest) {
       }
     });
     
-    // 按字母顺序排序参数
+    // 按照官方文档：Object.entries(params) 并排序
     const sortedEntries = Object.entries(params).sort(([a], [b]) => a.localeCompare(b));
     console.log('🔍 Sorted parameters:', sortedEntries);
     
-    // 格式化为 key=value 并用 | 连接，最后加上 salt=API_KEY
-    const canonical = sortedEntries
+    // 完全按照文档实现
+    const data = sortedEntries
       .map(([key, value]) => `${key}=${value}`)
       .concat(`salt=${apiKey}`)
       .join('|');
     
+    console.log('🔍 Generated data string:', data);
+    console.log('🔍 API Key used:', apiKey);
+    
     // 使用 SHA256 哈希（不是 HMAC）
     const expectedSignature = crypto
       .createHash('sha256')
-      .update(canonical, 'utf8')
+      .update(data, 'utf8')
       .digest('hex');
     
     // 验证签名（不区分大小写）
     const isValid = signature.toLowerCase() === expectedSignature.toLowerCase();
     
-    console.log('   Canonical string:', canonical);
+    console.log('   Data string:', data);
     console.log('   Expected signature:', expectedSignature);
     console.log('   Received signature:', signature);
     console.log('   Signature valid (case-insensitive):', isValid);
@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
       expectedSignature,
       receivedSignature: signature,
       rawQueryString,
-      canonicalString: canonical,
+      canonicalString: data,
       apiKeyConfigured: !!apiKey
     });
   } catch (error) {
