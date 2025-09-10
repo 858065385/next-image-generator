@@ -44,8 +44,16 @@ function PaymentResultContent() {
       const fullUrl = typeof window !== 'undefined' ? window.location.search : '';
       const fullQS = fullUrl.substring(1); // 去掉 '?'
       
-      // 切掉最后的 '&signature=...' 及其值
-      const [rawQueryString, receivedSignature] = fullQS.split("&signature=");
+      // 正确切掉最后的 '&signature=...' 及其值
+      // 使用 lastIndex 来找到最后一个 &signature= 的位置
+      const signatureIndex = fullQS.lastIndexOf("&signature=");
+      let rawQueryString = fullQS;
+      let receivedSignature = "";
+      
+      if (signatureIndex !== -1) {
+        rawQueryString = fullQS.substring(0, signatureIndex);
+        receivedSignature = fullQS.substring(signatureIndex + "&signature=".length);
+      }
       
       console.log('🔍 Debug - Payment Result Signature Verification:');
       console.log('   Full URL search:', fullUrl);
