@@ -51,18 +51,25 @@ interface LogEntry {
   user_email?: string;
 }
 
+interface DebugData {
+  subscriptions?: any[];
+  webhooks?: any[];
+  credit_usage?: any[];
+}
+
 export default function AdminEnhancedPage() {
   const [userId, setUserId] = useState('');
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState<Stats | null>(null);
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [activeTab, setActiveTab] = useState<'user' | 'stats' | 'logs'>('user');
+  const [activeTab, setActiveTab] = useState<'user' | 'stats' | 'logs' | 'debug'>('user');
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [creditAmount, setCreditAmount] = useState('');
   const [creditReason, setCreditReason] = useState('');
   const [selectedPlan, setSelectedPlan] = useState('1');
+  const [debugData, setDebugData] = useState<DebugData>({});
 
   // 加载统计数据
   useEffect(() => {
@@ -73,6 +80,15 @@ export default function AdminEnhancedPage() {
   useEffect(() => {
     if (activeTab === 'logs') {
       loadLogs();
+    }
+  }, [activeTab]);
+
+  // 加载调试数据
+  useEffect(() => {
+    if (activeTab === 'debug') {
+      loadDebugData();
+      const interval = setInterval(loadDebugData, 30000);
+      return () => clearInterval(interval);
     }
   }, [activeTab]);
 
@@ -100,151 +116,124 @@ export default function AdminEnhancedPage() {
     }
   };
 
-  const searchUsers = async () => {
-    if (!searchTerm) return;
-    
+  const loadDebugData = async () => {
     try {
-      const response = await fetch(`/api/admin/users?search=${searchTerm}`);
+      const response = await fetch('/api/debug/query-subscriptions');
+      const data = await response.json();
+      setDebugData(data);
+    } catch (error) {
+      console.error('Failed to load debug data:', error);
+    }
+  };
+
+  const handleSearch = async () => {
+    if (!searchTerm.trim()) return;
+    
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/admin/users/search?q=${encodeURIComponent(searchTerm)}`);
       const data = await response.json();
       if (data.code === 0) {
         setSearchResults(data.data.users);
       }
     } catch (error) {
-      console.error('Failed to search users:', error);
-    }
-  };
-
-  const loadUserDetails = async (uid: string) => {
-    setLoading(true);
-    setUserId(uid);
-    setSearchResults([]);
-    
-    try {
-      const response = await fetch(`/api/admin/users/${uid}`);
-      const data = await response.json();
-      if (data.code === 0) {
-        setUserData(data.data);
-      }
-    } catch (error) {
-      console.error('Failed to load user details:', error);
+      console.error('Search failed:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const adjustCredits = async (operation: 'add' | 'deduct') => {
-    if (!userId || !creditAmount) return;
-    
-    if (!confirm(`确定要${operation === 'add' ? '增加' : '扣除'} ${creditAmount} 积分吗？`)) {
+  const handleUserSelect = async (user: User) => {
+    setUserId(user.uuid);
+    try {
+      const response = await fetch(`/api/admin/users/${user.uuid}`);
+      const data = await response.json();
+      if (data.code === 0) {
+        setUserData(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to load user data:', error);
+    }
+  };
+
+  const handleAddCredits = async () => {
+    if (!userId || !creditAmount || !creditReason) {
+      alert('请填写完整信息');
       return;
     }
-    
-    try {
-      const response = await fetch(`/api/admin/users/${userId}/credits`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: creditAmount,
-          reason: creditReason || '管理员调整',
-          operation
-        })
-      });
-      
-      const data = await response.json();
-      if (data.code === 0) {
-        alert(`操作成功！新余额：${data.data.new_balance}`);
-        // 刷新用户数据
-        loadUserDetails(userId);
-        setCreditAmount('');
-        setCreditReason('');
-      } else {
-        alert(`操作失败：${data.error}`);
-      }
-    } catch (error) {
-      console.error('Failed to adjust credits:', error);
-      alert('操作失败');
-    }
-  };
 
-  const updateSubscription = async () => {
-    if (!userId) return;
-    
     try {
-      const response = await fetch(`/api/admin/users/${userId}/subscription`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          subscription_plan_id: parseInt(selectedPlan),
-          status: 'active',
-          action: 'create'
-        })
-      });
-      
-      const data = await response.json();
-      if (data.code === 0) {
-        alert('订阅更新成功！');
-        loadUserDetails(userId);
-      } else {
-        alert(`操作失败：${data.error}`);
-      }
-    } catch (error) {
-      console.error('Failed to update subscription:', error);
-      alert('操作失败');
-    }
-  };
-
-  const simulatePayment = async (planType: 'monthly' | 'yearly') => {
-    if (!userId) return;
-    
-    try {
-      const response = await fetch('/api/debug/simulate-subscription-payment', {
+      const response = await fetch('/api/admin/credits/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: userId,
-          plan_type: planType,
-          simulate_payment: true
+          amount: parseInt(creditAmount),
+          reason: creditReason
         })
       });
-      
+
       const data = await response.json();
       if (data.code === 0) {
-        alert(`模拟${planType === 'monthly' ? '月度' : '年度'}支付成功！`);
-        loadUserDetails(userId);
+        alert('积分添加成功');
+        setCreditAmount('');
+        setCreditReason('');
+        // 刷新用户数据
+        if (userData) {
+          handleUserSelect(userData.user);
+        }
       } else {
-        alert(`模拟失败：${data.error}`);
+        alert(data.message || '添加失败');
       }
     } catch (error) {
-      console.error('Failed to simulate payment:', error);
+      console.error('Failed to add credits:', error);
+      alert('添加失败');
+    }
+  };
+
+  const handleSimulateSubscription = async () => {
+    if (!userId) {
+      alert('请先选择用户');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/admin/subscription/simulate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userId,
+          plan_id: parseInt(selectedPlan)
+        })
+      });
+
+      const data = await response.json();
+      if (data.code === 0) {
+        alert('订阅模拟成功');
+        // 刷新用户数据
+        if (userData) {
+          handleUserSelect(userData.user);
+        }
+      } else {
+        alert(data.message || '模拟失败');
+      }
+    } catch (error) {
+      console.error('Failed to simulate subscription:', error);
       alert('模拟失败');
     }
   };
 
   return (
-    <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '20px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-        <h1 style={{ fontSize: '28px' }}>管理员控制台</h1>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <a 
-            href="/test-payment" 
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              padding: '8px 16px',
-              backgroundColor: '#28a745',
-              color: 'white',
-              textDecoration: 'none',
-              borderRadius: '4px',
-              fontSize: '14px'
-            }}
-          >
-            测试支付
-          </a>
+    <div style={{ padding: '20px', maxWidth: '1400px', margin: '0 auto', fontFamily: 'Arial, sans-serif' }}>
+      <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1 style={{ margin: 0, color: '#333' }}>管理后台</h1>
+        <div>
           <a 
             href="/" 
             style={{
-              padding: '8px 16px',
-              backgroundColor: '#6c757d',
+              display: 'inline-block',
+              padding: '10px 20px',
+              background: '#6c757d',
               color: 'white',
               textDecoration: 'none',
               borderRadius: '4px',
@@ -299,127 +288,79 @@ export default function AdminEnhancedPage() {
         >
           操作日志
         </button>
+        <button
+          style={{
+            padding: '10px 20px',
+            border: 'none',
+            borderRadius: '5px 5px 0 0',
+            background: activeTab === 'debug' ? '#007bff' : '#f8f9fa',
+            color: activeTab === 'debug' ? 'white' : 'black',
+            cursor: 'pointer'
+          }}
+          onClick={() => setActiveTab('debug')}
+        >
+          订阅调试
+        </button>
       </div>
 
       {activeTab === 'user' && (
         <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '20px' }}>
-          {/* 左侧搜索和操作面板 */}
-          <div>
-            {/* 用户搜索 */}
-            <div style={{ background: '#f8f9fa', padding: '20px', borderRadius: '8px', marginBottom: '20px' }}>
-              <h3>用户搜索</h3>
+          {/* 左侧搜索 */}
+          <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+            <h3>搜索用户</h3>
+            <div style={{ marginBottom: '15px' }}>
               <input
                 type="text"
-                placeholder="输入 UUID 或邮箱"
+                placeholder="输入邮箱或昵称"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && searchUsers()}
-                style={{ width: '100%', padding: '8px', margin: '10px 0', border: '1px solid #ddd', borderRadius: '4px' }}
+                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                style={{
+                  width: '100%',
+                  padding: '8px',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  fontSize: '14px'
+                }}
               />
-              <button
-                onClick={searchUsers}
-                style={{ width: '100%', padding: '8px', background: '#007bff', color: 'white', border: 'none', borderRadius: '4px' }}
-              >
-                搜索
-              </button>
-              
-              {/* 搜索结果 */}
-              {searchResults.length > 0 && (
-                <div style={{ marginTop: '15px' }}>
-                  <h4>搜索结果</h4>
+            </div>
+            <button
+              onClick={handleSearch}
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '10px',
+                background: '#007bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              {loading ? '搜索中...' : '搜索'}
+            </button>
+
+            {/* 搜索结果 */}
+            {searchResults.length > 0 && (
+              <div style={{ marginTop: '20px' }}>
+                <h4>搜索结果</h4>
+                <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
                   {searchResults.map(user => (
                     <div
-                      key={user.uuid}
+                      key={user.id}
+                      onClick={() => handleUserSelect(user)}
                       style={{
                         padding: '10px',
-                        margin: '5px 0',
-                        background: 'white',
-                        border: '1px solid #ddd',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
+                        borderBottom: '1px solid #eee',
+                        cursor: 'pointer',
+                        background: userId === user.uuid ? '#f0f0f0' : 'white'
                       }}
-                      onClick={() => loadUserDetails(user.uuid)}
                     >
-                      <div>{user.nickname || user.email}</div>
+                      <div style={{ fontWeight: 'bold' }}>{user.nickname}</div>
                       <div style={{ fontSize: '12px', color: '#666' }}>{user.email}</div>
                     </div>
                   ))}
-                </div>
-              )}
-            </div>
-
-            {/* 快速操作 */}
-            {userData && (
-              <div style={{ background: '#f8f9fa', padding: '20px', borderRadius: '8px' }}>
-                <h3>快速操作</h3>
-                
-                {/* 积分调整 */}
-                <div style={{ marginBottom: '15px' }}>
-                  <h4>积分调整</h4>
-                  <input
-                    type="number"
-                    placeholder="积分数量"
-                    value={creditAmount}
-                    onChange={(e) => setCreditAmount(e.target.value)}
-                    style={{ width: '100%', padding: '8px', margin: '5px 0', border: '1px solid #ddd', borderRadius: '4px' }}
-                  />
-                  <input
-                    type="text"
-                    placeholder="调整原因"
-                    value={creditReason}
-                    onChange={(e) => setCreditReason(e.target.value)}
-                    style={{ width: '100%', padding: '8px', margin: '5px 0', border: '1px solid #ddd', borderRadius: '4px' }}
-                  />
-                  <div style={{ display: 'flex', gap: '10px' }}>
-                    <button
-                      onClick={() => adjustCredits('add')}
-                      style={{ flex: 1, padding: '8px', background: '#28a745', color: 'white', border: 'none', borderRadius: '4px' }}
-                    >
-                      增加
-                    </button>
-                    <button
-                      onClick={() => adjustCredits('deduct')}
-                      style={{ flex: 1, padding: '8px', background: '#dc3545', color: 'white', border: 'none', borderRadius: '4px' }}
-                    >
-                      扣除
-                    </button>
-                  </div>
-                </div>
-
-                {/* 订阅管理 */}
-                <div style={{ marginBottom: '15px' }}>
-                  <h4>订阅管理</h4>
-                  <select
-                    value={selectedPlan}
-                    onChange={(e) => setSelectedPlan(e.target.value)}
-                    style={{ width: '100%', padding: '8px', margin: '5px 0', border: '1px solid #ddd', borderRadius: '4px' }}
-                  >
-                    <option value="1">月度会员 (100积分)</option>
-                    <option value="2">年度会员 (1200积分)</option>
-                  </select>
-                  <button
-                    onClick={updateSubscription}
-                    style={{ width: '100%', padding: '8px', margin: '5px 0', background: '#17a2b8', color: 'white', border: 'none', borderRadius: '4px' }}
-                  >
-                    设置订阅
-                  </button>
-                </div>
-
-                {/* 模拟支付 */}
-                <div>
-                  <h4>模拟支付</h4>
-                  <button
-                    onClick={() => simulatePayment('monthly')}
-                    style={{ width: '100%', padding: '8px', margin: '5px 0', background: '#ffc107', color: 'black', border: 'none', borderRadius: '4px' }}
-                  >
-                    模拟月度支付
-                  </button>
-                  <button
-                    onClick={() => simulatePayment('yearly')}
-                    style={{ width: '100%', padding: '8px', margin: '5px 0', background: '#fd7e14', color: 'white', border: 'none', borderRadius: '4px' }}
-                  >
-                    模拟年度支付
-                  </button>
                 </div>
               </div>
             )}
@@ -429,74 +370,118 @@ export default function AdminEnhancedPage() {
           <div>
             {userData ? (
               <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-                <h2>用户详情</h2>
-                
-                {/* 基本信息 */}
-                <div style={{ marginBottom: '30px' }}>
-                  <h3>基本信息</h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '10px', alignItems: 'center' }}>
-                    <div><strong>UUID:</strong></div>
-                    <div>{userData.user.uuid}</div>
-                    <div><strong>邮箱:</strong></div>
-                    <div>{userData.user.email}</div>
-                    <div><strong>昵称:</strong></div>
-                    <div>{userData.user.nickname || '未设置'}</div>
-                    <div><strong>注册时间:</strong></div>
-                    <div>{new Date(userData.user.created_at).toLocaleString()}</div>
+                <h3>用户详情</h3>
+                <div style={{ marginBottom: '20px' }}>
+                  <h4>基本信息</h4>
+                  <p><strong>昵称:</strong> {userData.user.nickname}</p>
+                  <p><strong>邮箱:</strong> {userData.user.email}</p>
+                  <p><strong>注册时间:</strong> {new Date(userData.user.created_at).toLocaleString()}</p>
+                </div>
+
+                {userData.subscription && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <h4>订阅信息</h4>
+                    <p><strong>计划:</strong> {userData.subscription.plan_name}</p>
+                    <p><strong>状态:</strong> {userData.subscription.subscription_status}</p>
+                    <p><strong>剩余次数:</strong> {userData.subscription.remain_count}</p>
+                  </div>
+                )}
+
+                {userData.credits && (
+                  <div style={{ marginBottom: '20px' }}>
+                    <h4>积分信息</h4>
+                    <p><strong>剩余积分:</strong> {userData.credits.period_remain_count}</p>
+                    <p><strong>已使用:</strong> {userData.credits.used_count}</p>
+                    <p><strong>订阅状态:</strong> {userData.credits.is_subscription_active ? '活跃' : '非活跃'}</p>
+                  </div>
+                )}
+
+                {/* 添加积分 */}
+                <div style={{ marginBottom: '20px', padding: '15px', background: '#f8f9fa', borderRadius: '4px' }}>
+                  <h4>添加积分</h4>
+                  <div style={{ marginBottom: '10px' }}>
+                    <input
+                      type="number"
+                      placeholder="积分数量"
+                      value={creditAmount}
+                      onChange={(e) => setCreditAmount(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '8px',
+                        border: '1px solid #ddd',
+                        borderRadius: '4px',
+                        marginBottom: '10px',
+                        fontSize: '14px'
+                      }}
+                    />
+                    <input
+                      type="text"
+                      placeholder="原因"
+                      value={creditReason}
+                      onChange={(e) => setCreditReason(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '8px',
+                        border: '1px solid #ddd',
+                        borderRadius: '4px',
+                        marginBottom: '10px',
+                        fontSize: '14px'
+                      }}
+                    />
+                    <button
+                      onClick={handleAddCredits}
+                      style={{
+                        padding: '8px 16px',
+                        background: '#28a745',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '14px'
+                      }}
+                    >
+                      添加积分
+                    </button>
                   </div>
                 </div>
 
-                {/* 订阅信息 */}
-                {userData.subscription && (
-                  <div style={{ marginBottom: '30px' }}>
-                    <h3>订阅信息</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '10px', alignItems: 'center' }}>
-                      <div><strong>计划名称:</strong></div>
-                      <div>{userData.subscription.plan_name}</div>
-                      <div><strong>订阅状态:</strong></div>
-                      <div>
-                        <span style={{
-                          padding: '4px 8px',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          background: userData.subscription.subscription_status === 'active' ? '#d4edda' : '#f8d7da',
-                          color: userData.subscription.subscription_status === 'active' ? '#155724' : '#721c24'
-                        }}>
-                          {userData.subscription.subscription_status}
-                        </span>
-                      </div>
-                      <div><strong>剩余积分:</strong></div>
-                      <div>{userData.subscription.remain_count}</div>
-                    </div>
+                {/* 模拟订阅 */}
+                <div style={{ padding: '15px', background: '#f8f9fa', borderRadius: '4px' }}>
+                  <h4>模拟订阅</h4>
+                  <div style={{ marginBottom: '10px' }}>
+                    <select
+                      value={selectedPlan}
+                      onChange={(e) => setSelectedPlan(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '8px',
+                        border: '1px solid #ddd',
+                        borderRadius: '4px',
+                        marginBottom: '10px',
+                        fontSize: '14px'
+                      }}
+                    >
+                      <option value="1">基础计划 (月付)</option>
+                      <option value="2">基础计划 (年付)</option>
+                      <option value="3">专业计划 (月付)</option>
+                      <option value="4">专业计划 (年付)</option>
+                    </select>
+                    <button
+                      onClick={handleSimulateSubscription}
+                      style={{
+                        padding: '8px 16px',
+                        background: '#ffc107',
+                        color: '#212529',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '14px'
+                      }}
+                    >
+                      模拟订阅
+                    </button>
                   </div>
-                )}
-
-                {/* 积分信息 */}
-                {userData.credits && (
-                  <div>
-                    <h3>积分信息</h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: '200px 1fr', gap: '10px', alignItems: 'center' }}>
-                      <div><strong>当前余额:</strong></div>
-                      <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#28a745' }}>
-                        {userData.credits.period_remain_count}
-                      </div>
-                      <div><strong>已使用:</strong></div>
-                      <div>{userData.credits.used_count}</div>
-                      <div><strong>订阅状态:</strong></div>
-                      <div>
-                        <span style={{
-                          padding: '4px 8px',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          background: userData.credits.is_subscription_active ? '#d4edda' : '#f8d7da',
-                          color: userData.credits.is_subscription_active ? '#155724' : '#721c24'
-                        }}>
-                          {userData.credits.is_subscription_active ? '活跃' : '非活跃'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                </div>
               </div>
             ) : (
               <div style={{ textAlign: 'center', padding: '50px', color: '#666' }}>
@@ -594,6 +579,155 @@ export default function AdminEnhancedPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'debug' && (
+        <div style={{ display: 'grid', gap: '20px' }}>
+          {/* 订阅记录 */}
+          <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+            <h3>订阅记录 (最新20条)</h3>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #ddd' }}>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>ID</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>用户ID</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>邮箱</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>计划</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>状态</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>当前周期</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>Creem订阅ID</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>创建时间</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {debugData.subscriptions?.map((sub) => (
+                    <tr key={sub.id} style={{ borderBottom: '1px solid #eee' }}>
+                      <td style={{ padding: '8px' }}>{sub.id}</td>
+                      <td style={{ padding: '8px' }}>{sub.user_id}</td>
+                      <td style={{ padding: '8px' }}>{sub.user_email || '-'}</td>
+                      <td style={{ padding: '8px' }}>{sub.plan_name} ({sub.plan_interval})</td>
+                      <td style={{ padding: '8px' }}>
+                        <span style={{
+                          padding: '2px 6px',
+                          borderRadius: '3px',
+                          fontSize: '12px',
+                          background: sub.status === 'active' ? '#d4edda' : 
+                                     sub.status === 'cancelled' ? '#f8d7da' : '#fff3cd',
+                          color: sub.status === 'active' ? '#155724' : 
+                                sub.status === 'cancelled' ? '#721c24' : '#856404'
+                        }}>
+                          {sub.status}
+                        </span>
+                      </td>
+                      <td style={{ padding: '8px' }}>
+                        {new Date(sub.current_period_start).toLocaleDateString()} - 
+                        {new Date(sub.current_period_end).toLocaleDateString()}
+                      </td>
+                      <td style={{ padding: '8px', fontFamily: 'monospace' }}>{sub.creem_subscription_id || '-'}</td>
+                      <td style={{ padding: '8px' }}>{new Date(sub.created_at).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Webhook事件 */}
+          <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+            <h3>Webhook事件 (最新10条)</h3>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #ddd' }}>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>事件ID</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>事件类型</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>处理状态</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>创建时间</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {debugData.webhooks?.map((webhook) => (
+                    <tr key={webhook.id} style={{ borderBottom: '1px solid #eee' }}>
+                      <td style={{ padding: '8px', fontFamily: 'monospace' }}>{webhook.event_id}</td>
+                      <td style={{ padding: '8px' }}>
+                        <span style={{
+                          padding: '2px 6px',
+                          borderRadius: '3px',
+                          fontSize: '12px',
+                          background: '#e9ecef',
+                          color: '#495057'
+                        }}>
+                          {webhook.event_type}
+                        </span>
+                      </td>
+                      <td style={{ padding: '8px' }}>
+                        <span style={{
+                          padding: '2px 6px',
+                          borderRadius: '3px',
+                          fontSize: '12px',
+                          background: webhook.processed ? '#d4edda' : '#f8d7da',
+                          color: webhook.processed ? '#155724' : '#721c24'
+                        }}>
+                          {webhook.processed ? '已处理' : '未处理'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '8px' }}>{new Date(webhook.created_at).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* 积分使用记录 */}
+          <div style={{ background: 'white', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+            <h3>积分使用记录 (最新20条)</h3>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid #ddd' }}>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>ID</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>用户ID</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>订阅ID</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>剩余积分</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>已使用</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>订阅状态</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>周期</th>
+                    <th style={{ padding: '8px', textAlign: 'left' }}>更新时间</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {debugData.credit_usage?.map((credit) => (
+                    <tr key={credit.id} style={{ borderBottom: '1px solid #eee' }}>
+                      <td style={{ padding: '8px' }}>{credit.id}</td>
+                      <td style={{ padding: '8px' }}>{credit.user_id}</td>
+                      <td style={{ padding: '8px' }}>{credit.user_subscriptions_id || '-'}</td>
+                      <td style={{ padding: '8px' }}>{credit.period_remain_count}</td>
+                      <td style={{ padding: '8px' }}>{credit.used_count}</td>
+                      <td style={{ padding: '8px' }}>
+                        <span style={{
+                          padding: '2px 6px',
+                          borderRadius: '3px',
+                          fontSize: '12px',
+                          background: credit.is_subscription_active ? '#d4edda' : '#f8d7da',
+                          color: credit.is_subscription_active ? '#155724' : '#721c24'
+                        }}>
+                          {credit.is_subscription_active ? '活跃' : '非活跃'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '8px' }}>
+                        {new Date(credit.period_start).toLocaleDateString()} - 
+                        {new Date(credit.period_end).toLocaleDateString()}
+                      </td>
+                      <td style={{ padding: '8px' }}>{new Date(credit.updated_at).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
