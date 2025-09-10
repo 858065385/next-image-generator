@@ -18,7 +18,7 @@ export default function TestSignaturePage() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             rawQueryString,
-            webhookSecret: process.env.NEXT_PUBLIC_CREEM_WEBHOOK_SECRET,
+            // webhookSecret 是可选的，如果不提供会使用服务器端的环境变量
           }),
         }),
         fetch('/api/creem/verify-signature', {
