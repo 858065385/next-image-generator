@@ -32,25 +32,30 @@ export async function POST(req: NextRequest) {
     console.log('   Raw query string:', rawQueryString);
     console.log('   Received signature:', signature);
     
-    // 使用 Webhook Secret 进行 Return URL 签名验证
-    const webhookSecret = process.env.CREEM_WEBHOOK_SECRET;
+    // 根据 Creem 官方文档，Return URL 签名使用 API Key 作为 salt
+    const apiKey = process.env.CREEM_API_KEY;
     
-    if (!webhookSecret) {
+    if (!apiKey) {
       return NextResponse.json(
-        { error: 'CREEM_WEBHOOK_SECRET not configured' },
+        { error: 'CREEM_API_KEY not configured' },
         { status: 500 }
       );
     }
     
-    // 重新计算签名 - 使用原始查询字符串，不做任何修改
+    // 按照文档：将参数用 | 连接，最后加上 salt=API_KEY
+    const params = rawQueryString.split('&');
+    const canonical = params.join('|') + `|salt=${apiKey}`;
+    
+    // 使用 SHA256 哈希（不是 HMAC）
     const expectedSignature = crypto
-      .createHmac('sha256', webhookSecret)
-      .update(rawQueryString, 'utf8')
+      .createHash('sha256')
+      .update(canonical, 'utf8')
       .digest('hex');
     
     // 验证签名（不区分大小写）
     const isValid = signature.toLowerCase() === expectedSignature.toLowerCase();
     
+    console.log('   Canonical string:', canonical);
     console.log('   Expected signature:', expectedSignature);
     console.log('   Signature valid:', isValid);
     
@@ -59,7 +64,8 @@ export async function POST(req: NextRequest) {
       expectedSignature,
       receivedSignature: signature,
       rawQueryString,
-      webhookSecretConfigured: !!webhookSecret
+      canonicalString: canonical,
+      apiKeyConfigured: !!apiKey
     });
   } catch (error) {
     console.error('Error verifying Creem return URL signature:', error);

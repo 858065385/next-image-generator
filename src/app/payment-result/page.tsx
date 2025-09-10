@@ -79,7 +79,7 @@ function PaymentResultContent() {
             console.warn('⚠️ Signature verification failed, but continuing processing:', result);
             console.warn('   Expected:', result.expectedSignature);
             console.warn('   Received:', result.receivedSignature);
-            console.warn('   This might be due to CREEM_WEBHOOK_SECRET configuration');
+            console.warn('   This might be due to CREEM_API_KEY configuration');
           }
           
           // 不管签名验证结果如何，都处理支付结果
