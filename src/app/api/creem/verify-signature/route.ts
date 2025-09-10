@@ -49,11 +49,21 @@ export async function POST(req: NextRequest) {
     const searchParams = new URLSearchParams(rawQueryString);
     const params: Record<string, string> = {};
     
-    // 提取所有参数（排除 signature）
+    // Creem 官方允许参与签名的字段白名单
+    const SIGNED_KEYS = [
+      'checkout_id',
+      'order_id', 
+      'customer_id',
+      'subscription_id',
+      'product_id',
+      'request_id',      // 可选
+    ];
+    
+    // 只提取白名单中的字段
     console.log('🔍 All parameters found:');
     searchParams.forEach((value, key) => {
       console.log(`   ${key}: ${value}`);
-      if (key !== 'signature') {
+      if (SIGNED_KEYS.includes(key)) {
         params[key] = value;
       }
     });
