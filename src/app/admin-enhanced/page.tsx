@@ -227,7 +227,21 @@ export default function AdminEnhancedPage() {
     <div style={{ padding: '20px', maxWidth: '1400px', margin: '0 auto', fontFamily: 'Arial, sans-serif' }}>
       <div style={{ marginBottom: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1 style={{ margin: 0, color: '#333' }}>管理后台</h1>
-        <div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <a 
+            href="/dashboard" 
+            style={{
+              display: 'inline-block',
+              padding: '10px 20px',
+              background: '#28a745',
+              color: 'white',
+              textDecoration: 'none',
+              borderRadius: '4px',
+              fontSize: '14px'
+            }}
+          >
+            📊 用户仪表盘
+          </a>
           <a 
             href="/" 
             style={{

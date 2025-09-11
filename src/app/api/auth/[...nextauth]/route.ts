@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 
-const authOptions = {
+export const authOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   providers: [
     GoogleProvider({
@@ -16,6 +16,9 @@ const authOptions = {
       }
     }),
   ],
+  pages: {
+    signIn: '/signin',
+  },
   callbacks: {
     async jwt({ token, user, account }) {
       if (user && account) {

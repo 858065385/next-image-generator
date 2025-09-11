@@ -1,26 +1,53 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 
+/**
+ * Creem Return URL 签名验证接口
+ * 
+ * 用途：验证 Creem 支付回调的签名，确保请求来自 Creem 服务器
+ * 
+ * 签名算法（根据 Creem 官方文档）：
+ * 1. 从 query string 中提取白名单字段
+ * 2. 按固定顺序拼接成 key=value 格式
+ * 3. 末尾追加 |salt=${API_KEY}
+ * 4. 计算 SHA256 哈希（非 HMAC）
+ * 5. 与请求中的 signature 比较（不区分大小写）
+ * 
+ * 白名单字段（仅这些字段参与签名计算）：
+ * - checkout_id（必选）- 结账会话ID
+ * - order_id（必选）- 订单ID
+ * - customer_id（必选）- 客户ID
+ * - subscription_id（必选）- 订阅ID
+ * - product_id（必选）- 产品ID
+ * - request_id（可选）- 请求ID
+ * 
+ * 重要说明：
+ * - success 字段不参与签名计算！
+ * - timestamp 等其他字段也不参与签名计算
+ * - 签名验证失败不应阻止支付流程（可能是配置问题）
+ */
 export async function POST(req: NextRequest) {
   try {
-    // 支持两种格式：JSON 或原始 query string
+    // 支持两种请求格式：JSON 或原始 query string
     let signature: string;
     let rawQueryString: string;
     
     const contentType = req.headers.get('content-type');
     
     if (contentType?.includes('application/json')) {
+      // JSON 格式：{ signature: "xxx", rawQueryString: "xxx" }
       const body = await req.json();
       signature = body.signature;
       rawQueryString = body.rawQueryString || body.queryParams;
     } else {
-      // 作为文本处理
+      // 纯文本格式：query string 直接跟在请求体中
       const text = await req.text();
       const [qs, sig] = text.split('&signature=');
       rawQueryString = qs;
       signature = sig;
     }
     
+    // 参数校验
     if (!signature || !rawQueryString) {
       return NextResponse.json(
         { error: 'Missing signature or query parameters' },
@@ -32,7 +59,7 @@ export async function POST(req: NextRequest) {
     console.log('   Raw query string:', rawQueryString);
     console.log('   Received signature:', signature);
     
-    // 根据 Creem 官方文档，Return URL 签名使用 API Key 作为 salt
+    // 获取 API Key 作为 salt
     const apiKey = process.env.CREEM_API_KEY;
     
     if (!apiKey) {
@@ -42,24 +69,23 @@ export async function POST(req: NextRequest) {
       );
     }
     
-    // 按照 Creem 官方文档实现签名验证
     console.log('🔍 Raw query string before parsing:', rawQueryString);
     
-    // 解析 query string
+    // 1. 解析 query string 并过滤字段
     const searchParams = new URLSearchParams(rawQueryString);
     const params: Record<string, string> = {};
     
-    // Creem 官方允许参与签名的字段白名单
+    // Creem 官方白名单：只有这些字段参与签名计算
     const SIGNED_KEYS = [
-      'checkout_id',
-      'order_id', 
-      'customer_id',
-      'subscription_id',
-      'product_id',
-      'request_id',      // 可选
+      'checkout_id',    // 必选：结账会话ID
+      'order_id',       // 必选：订单ID
+      'customer_id',    // 必选：客户ID
+      'subscription_id', // 必选：订阅ID
+      'product_id',     // 必选：产品ID
+      'request_id',     // 可选：请求ID
     ];
     
-    // 只提取白名单中的字段
+    // 只提取白名单中的字段（忽略其他字段如 success、timestamp 等）
     console.log('🔍 All parameters found:');
     searchParams.forEach((value, key) => {
       console.log(`   ${key}: ${value}`);
@@ -68,7 +94,7 @@ export async function POST(req: NextRequest) {
       }
     });
     
-    // 按照官方文档：使用固定顺序确保一致性
+    // 2. 按固定顺序拼接参数（确保与 Creem 服务器一致）
     const fixedOrder = ['checkout_id', 'order_id', 'customer_id', 'subscription_id', 'product_id', 'request_id'];
     const canonical = [];
     
@@ -80,19 +106,19 @@ export async function POST(req: NextRequest) {
     
     console.log('🔍 Parameters in fixed order:', canonical);
     
-    // 完全按照文档实现
+    // 3. 构造待签名字符串：参数拼接 | 追加 salt
     const data = canonical.concat(`salt=${apiKey}`).join('|');
     
     console.log('🔍 Generated data string:', data);
-    console.log('🔍 API Key used:', apiKey);
+    console.log('🔍 API Key used:', apiKey ? '***' + apiKey.slice(-4) : 'NOT SET');
     
-    // 使用 SHA256 哈希（不是 HMAC）
+    // 4. 计算 SHA256 哈希（注意：不是 HMAC-SHA256）
     const expectedSignature = crypto
       .createHash('sha256')
       .update(data, 'utf8')
       .digest('hex');
     
-    // 验证签名（不区分大小写）
+    // 5. 验证签名（不区分大小写）
     const isValid = signature.toLowerCase() === expectedSignature.toLowerCase();
     
     console.log('   Data string:', data);
@@ -101,34 +127,18 @@ export async function POST(req: NextRequest) {
     console.log('   Signature valid (case-insensitive):', isValid);
     console.log('   Signature valid (case-sensitive):', signature === expectedSignature);
     
-    // 尝试不排序的版本
-    const unsortedCanonical = Object.entries(params)
-      .map(([key, value]) => `${key}=${value}`)
-      .concat(`salt=${apiKey}`)
-      .join('|');
-    const unsortedSignature = crypto
-      .createHash('sha256')
-      .update(unsortedCanonical, 'utf8')
-      .digest('hex');
-    console.log('   Unsorted canonical:', unsortedCanonical);
-    console.log('   Unsorted signature:', unsortedSignature);
-    
-    // 尝试用原始字符串的版本
-    const rawCanonical = rawQueryString.split('&').join('|') + `|salt=${apiKey}`;
-    const rawSignature = crypto
-      .createHash('sha256')
-      .update(rawCanonical, 'utf8')
-      .digest('hex');
-    console.log('   Raw canonical:', rawCanonical);
-    console.log('   Raw signature:', rawSignature);
-    
     return NextResponse.json({
       valid: isValid,
       expectedSignature,
       receivedSignature: signature,
       rawQueryString,
       canonicalString: data,
-      apiKeyConfigured: !!apiKey
+      apiKeyConfigured: !!apiKey,
+      debugInfo: {
+        signedParams: Object.keys(params),
+        fixedOrderUsed: fixedOrder.filter(key => params[key]),
+        algorithm: 'SHA256 (not HMAC)'
+      }
     });
   } catch (error) {
     console.error('Error verifying Creem return URL signature:', error);
