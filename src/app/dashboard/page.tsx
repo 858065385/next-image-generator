@@ -424,7 +424,7 @@ export default function DashboardPage() {
           
           {!subscription || subscription.subscription_status !== 'active' ? (
             <Link
-              href="/pricing"
+              href="/test-payment"
               style={{
                 display: 'inline-block',
                 padding: '0.75rem 1.5rem',
@@ -442,7 +442,7 @@ export default function DashboardPage() {
                 e.currentTarget.style.backgroundColor = '#10b981';
               }}
             >
-              📊 查看订阅计划
+              💳 测试订阅支付
             </Link>
           ) : null}
           

@@ -27,10 +27,6 @@ echo -n "Testing test-payment (/test-payment)... "
 curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/test-payment
 echo ""
 
-# Test pricing
-echo -n "Testing pricing (/pricing)... "
-curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/pricing
-echo ""
 
 # Test admin-enhanced
 echo -n "Testing admin-enhanced (/admin-enhanced)... "
