@@ -19,7 +19,7 @@ export default function HomePage() {
         </h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
           <Link
-            href="/dashboard"
+            href="/admin/dashboard"
             style={{
               display: 'block',
               padding: '1.5rem',
@@ -76,7 +76,7 @@ export default function HomePage() {
           </Link>
           
           <Link
-            href="/test-auth"
+            href="/admin/test-auth"
             style={{
               display: 'block',
               padding: '1.5rem',

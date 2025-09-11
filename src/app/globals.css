@@ -1,0 +1,16 @@
+/* @tailwind base;
+@tailwind components;
+@tailwind utilities; */
+/* v4 推荐写法 */
+@import "tailwindcss";
+
+/* 告诉 Tailwind 去哪里扫描 class —— 路径相对当前这个 CSS 文件 */
+@source "./**/*.{js,ts,jsx,tsx}", "../components/**/*.{js,ts,jsx,tsx}";
+
+/* 你自己的全局样式 */
+body { 
+  background-color: #f9fafb; /* 等价 bg-gray-50 */
+  color: #111827;            /* 等价 text-gray-900 */
+}
+/* 你的全局自定义 */
+/* body { @apply bg-gray-50 text-gray-900; } */
