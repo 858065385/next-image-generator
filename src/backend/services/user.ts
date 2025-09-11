@@ -1,6 +1,5 @@
 import { User } from "../types/type";
-import { insertUser, getByEmail, searchUsersByKeyword, getAllUsersWithPagination } from "../models/user";
-import { getByUuidAndEmail } from "../models/user";
+import { insertUser, getByEmail, getByUuid, getByUuidAndEmail, searchUsersByKeyword, getAllUsersWithPagination } from "../models/user";
 
 export async function saveUser(user: User) {
   try {
@@ -17,6 +16,10 @@ export async function saveUser(user: User) {
     console.log("save user failed: ", e);
     throw e;
   }
+}
+
+export async function getUserByUuid(uuid: string) {
+  return await getByUuid(uuid);
 }
 
 export async function getUserByUuidAndEmail(uuid: string, email: string) {

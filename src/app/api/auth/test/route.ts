@@ -12,9 +12,10 @@ export async function GET() {
         authenticated: true,
         user: {
           id: session.user.id,
+          uuid: session.user.uuid || session.user.id,
           email: session.user.email,
-          name: session.user.nickname,
-          image: session.user.avatar_url,
+          nickname: session.user.name || session.user.email?.split('@')[0],
+          avatar_url: session.user.image,
         }
       });
     } else {

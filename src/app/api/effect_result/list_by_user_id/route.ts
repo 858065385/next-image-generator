@@ -12,10 +12,17 @@ export async function GET(request: Request) {
   }
   const page = searchParams.get("page") || "1";
   const pageSize = searchParams.get("page_size") || "10";
+  
+  console.log('[DEBUG] Searching for user_id:', userId);
+  console.log('[DEBUG] Page:', page, 'PageSize:', pageSize);
+  
   const results = await pageListEffectResultsByUserId(
     userId,
     parseInt(page),
     parseInt(pageSize)
   );
+  
+  console.log('[DEBUG] Found results:', results?.length || 0);
+  
   return Response.json(results);
 }

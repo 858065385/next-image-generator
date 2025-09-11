@@ -55,7 +55,7 @@ export async function getUserSubscriptionInfoByUserId(user_id: string) {
     plan_interval: subscriptionPlan.interval,
     plan_price: subscriptionPlan.price,
     remain_count: creditUsage.period_remain_count,
-    subscription_status: creditUsage.is_subscription_active ? "active" : "inactive",
+    subscription_status: userSubscription.status.toLowerCase(),
     current_period_start: userSubscription.current_period_start,
     current_period_end: userSubscription.current_period_end,
     cancel_at_period_end: userSubscription.cancel_at_period_end,

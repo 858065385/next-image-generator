@@ -24,3 +24,25 @@ export async function hasSuccessfulPaymentByUserId(user_id: string) {
   const res = await db.query(`SELECT COUNT(*) as count FROM payment_history WHERE user_id = $1 AND status = 'success'`, [user_id]);
   return parseInt(res.rows[0].count) > 0;
 }
+
+export async function getByUserId(user_id: string, page: number, limit: number) {
+  const db = await getDb();
+  const offset = (page - 1) * limit;
+  const res = await db.query(
+    `SELECT * FROM payment_history 
+     WHERE user_id = $1 
+     ORDER BY created_at DESC 
+     LIMIT $2 OFFSET $3`,
+    [user_id, limit, offset]
+  );
+  return res.rows;
+}
+
+export async function countByUserId(user_id: string) {
+  const db = await getDb();
+  const res = await db.query(
+    `SELECT COUNT(*) as count FROM payment_history WHERE user_id = $1`,
+    [user_id]
+  );
+  return parseInt(res.rows[0].count);
+}

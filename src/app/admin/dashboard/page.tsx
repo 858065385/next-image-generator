@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { signOut } from 'next-auth/react';
 
 interface UserInfo {
   id: number;
@@ -45,8 +46,7 @@ export default function DashboardPage() {
   const [credits, setCredits] = useState<CreditInfo | null>(null);
   const [recentGenerations, setRecentGenerations] = useState<GenerationHistory[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userUuid, setUserUuid] = useState('');
-  const [userEmail, setUserEmail] = useState('');
+  const [signingOut, setSigningOut] = useState(false);
 
   // 获取用户会话信息
   useEffect(() => {
@@ -57,10 +57,8 @@ export default function DashboardPage() {
         
         if (data.user) {
           setUserInfo(data.user);
-          setUserUuid(data.user.uuid || data.user.id);
-          setUserEmail(data.user.email);
           // 加载用户详细信息
-          await loadUserDetails(data.user.uuid || data.user.id, data.user.email);
+          await loadUserDetails(data.user.uuid || data.user.id);
         } else {
           // 用户未登录
           setLoading(false);
@@ -74,36 +72,27 @@ export default function DashboardPage() {
     loadUserSession();
   }, []);
 
-  const loadUserDetails = async (uuid: string, email: string) => {
+  const handleSignOut = () => {
+    setSigningOut(true);
+    // 直接跳转到退出登录页面
+    window.location.href = '/signout';
+  };
+
+  const loadUserDetails = async (uuid: string) => {
     try {
-      // 加载订阅信息
-      const subResponse = await fetch('/api/user/get_user_subscription_info', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: uuid })
-      });
+      // 使用新的用户信息接口获取所有用户数据
+      const response = await fetch(`/api/users/${uuid}`);
       
-      const subData = await subResponse.json();
-      if (subData.code === 0) {
-        setSubscription(subData.data.subscription);
-        setCredits(subData.data.credits);
+      const data = await response.json();
+      if (data.code === 0) {
+        setSubscription(data.data.subscription);
+        setCredits(data.data.credits);
       }
 
-      // 加载最近生成记录
-      const genResponse = await fetch('/api/effect_result/list_by_user_id', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          user_id: uuid,
-          page: 1,
-          page_size: 5
-        })
-      });
-      
+      // 调用生成记录接口
+      const genResponse = await fetch(`/api/effect_result/list_by_user_id?user_id=${uuid}&page=1&page_size=5`);
       const genData = await genResponse.json();
-      if (genData.code === 0) {
-        setRecentGenerations(genData.data.items || []);
-      }
+      setRecentGenerations(genData || []);
     } catch (error) {
       console.error('Failed to load user details:', error);
     } finally {
@@ -218,7 +207,7 @@ export default function DashboardPage() {
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
           <Link
-            href="/admin-enhanced"
+            href="/admin"
             style={{
               display: 'inline-block',
               padding: '0.5rem 1rem',
@@ -447,7 +436,7 @@ export default function DashboardPage() {
           ) : null}
           
           <Link
-            href="/admin-enhanced"
+            href="/admin"
             style={{
               display: 'inline-block',
               padding: '0.75rem 1.5rem',
@@ -467,6 +456,34 @@ export default function DashboardPage() {
           >
             ⚙️ 管理中心
           </Link>
+          
+          <button
+            onClick={handleSignOut}
+            disabled={signingOut}
+            style={{
+              display: 'inline-block',
+              padding: '0.75rem 1.5rem',
+              backgroundColor: '#dc2626',
+              color: 'white',
+              border: 'none',
+              borderRadius: '0.5rem',
+              fontWeight: 'bold',
+              cursor: signingOut ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseOver={(e) => {
+              if (!signingOut) {
+                e.currentTarget.style.backgroundColor = '#b91c1c';
+              }
+            }}
+            onMouseOut={(e) => {
+              if (!signingOut) {
+                e.currentTarget.style.backgroundColor = '#dc2626';
+              }
+            }}
+          >
+            {signingOut ? '退出中...' : '🚪 退出登录'}
+          </button>
         </div>
       </div>
 

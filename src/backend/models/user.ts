@@ -57,6 +57,32 @@ export async function getByEmail(email: string): Promise<User | undefined> {
   throw lastError;
 }
 
+export async function getByUuid(uuid: string) {
+  let retries = 3;
+  let lastError;
+  
+  while (retries > 0) {
+    try {
+      const db = getDb();
+      const res = await db.query(`SELECT * FROM users WHERE uuid = $1 LIMIT 1`, [uuid]);
+      if (res.rowCount === 0) {
+        return undefined;
+      }
+      return formatUser(res.rows[0]);
+    } catch (error) {
+      lastError = error;
+      console.error(`Database query failed (${retries} retries left):`, error);
+      retries--;
+      if (retries > 0) {
+        // 等待一段时间后重试
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+  }
+  
+  throw lastError;
+}
+
 export async function getByUuidAndEmail(uuid: string, email: string) {
   let retries = 3;
   let lastError;

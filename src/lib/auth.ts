@@ -18,6 +18,7 @@ export const authOptions = {
   ],
   pages: {
     signIn: '/signin',
+    signOut: '/signout',
   },
   callbacks: {
     async jwt({ token, user, account }) {
@@ -36,6 +37,39 @@ export const authOptions = {
         session.user = token.user;
       }
       return session;
+    },
+    async signIn({ user, account }) {
+      if (account && account.provider === 'google') {
+        // 检查用户是否已经存在，不存在则创建
+        try {
+          const response = await fetch(`${process.env.NEXTAUTH_URL}/api/auth/register`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              user: {
+                email: user.email,
+                name: user.name,
+                image: user.image,
+              },
+              account: {
+                type: 'oauth',
+                provider: account.provider,
+                providerAccountId: account.providerAccountId,
+              },
+            }),
+          });
+          
+          const data = await response.json();
+          if (!response.ok) {
+            console.error('Failed to register user:', data);
+          }
+        } catch (error) {
+          console.error('Error registering user during sign in:', error);
+        }
+      }
+      return true;
     },
   },
 };
