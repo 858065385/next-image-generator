@@ -127,6 +127,8 @@ CREEM_WEBHOOK_SECRET=    # Webhook 密钥
 CREEM_API_BASE_URL=      # https://api.creem.io
 CREEM_PRODUCT_MONTHLY_ID= # 月度产品 ID
 CREEM_PRODUCT_YEARLY_ID=  # 年度产品 ID
+CREEM_SUCCESS_URL=       # 支付成功后跳转的URL（默认：/admin/payment-result?success=true）
+CREEM_CANCEL_URL=        # 支付取消后跳转的URL（默认：/admin/payment-result?cancelled=true）
 ```
 
 ## 关键模式
