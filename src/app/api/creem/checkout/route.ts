@@ -143,10 +143,12 @@ export async function POST(req: Request) {
     
     let checkoutSession;
     try {
+      const successUrl = `${process.env.WEB_BASE_URI}${process.env.CREEM_SUCCESS_URL || '/admin/payment-result?success=true'}`;
+      console.log('Creating checkout session with success URL:', successUrl);
+      
       checkoutSession = await creem.createCheckoutSession({
         product_id: creemProductId,
-        success_url: `${process.env.WEB_BASE_URI}${process.env.CREEM_SUCCESS_URL || '/admin/payment-result?success=true'}`,
-        cancel_url: `${process.env.WEB_BASE_URI}${process.env.CREEM_CANCEL_URL || '/admin/payment-result?cancelled=true'}`,
+        success_url: successUrl,
         metadata: {
           project: "ai-video-generator",
           interval: interval,
