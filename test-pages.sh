@@ -17,6 +17,11 @@ echo -n "Testing signin (/signin)... "
 curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/signin
 echo ""
 
+# Test test-auth
+echo -n "Testing test-auth (/test-auth)... "
+curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/test-auth
+echo ""
+
 # Test test-payment
 echo -n "Testing test-payment (/test-payment)... "
 curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/test-payment

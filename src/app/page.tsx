@@ -76,6 +76,71 @@ export default function HomePage() {
           </Link>
           
           <Link
+            href="/test-auth"
+            style={{
+              display: 'block',
+              padding: '1.5rem',
+              backgroundColor: 'white',
+              border: '1px solid #e2e8f0',
+              borderRadius: '0.75rem',
+              textDecoration: 'none',
+              transition: 'all 0.2s',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+            }}
+          >
+            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🔐</div>
+            <h3 style={{ margin: '0 0 0.5rem 0', color: '#1e293b' }}>测试认证</h3>
+            <p style={{ margin: 0, color: '#64748b', fontSize: '0.875rem' }}>
+              测试登录/退出功能
+            </p>
+          </Link>
+        </div>
+      </div>
+      
+      {/* 其他功能入口 */}
+      <div style={{ marginBottom: '3rem' }}>
+        <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: '#1e293b' }}>
+          💳 支付与订阅
+        </h2>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+          <Link
+            href="/test-payment"
+            target="_blank"
+            style={{
+              display: 'block',
+              padding: '1.5rem',
+              backgroundColor: 'white',
+              border: '1px solid #e2e8f0',
+              borderRadius: '0.75rem',
+              textDecoration: 'none',
+              transition: 'all 0.2s',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.transform = 'translateY(-2px)';
+              e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+            }}
+          >
+            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>💳</div>
+            <h3 style={{ margin: '0 0 0.5rem 0', color: '#1e293b' }}>测试支付</h3>
+            <p style={{ margin: 0, color: '#64748b', fontSize: '0.875rem' }}>
+              订阅服务，获取积分额度
+            </p>
+          </Link>
+          
+          <Link
             href="/pricing"
             style={{
               display: 'block',
