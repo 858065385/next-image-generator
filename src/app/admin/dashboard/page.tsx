@@ -457,6 +457,28 @@ export default function DashboardPage() {
             ⚙️ 管理中心
           </Link>
           
+          <Link
+            href="/admin/subscription"
+            style={{
+              display: 'inline-block',
+              padding: '0.75rem 1.5rem',
+              backgroundColor: '#8b5cf6',
+              color: 'white',
+              textDecoration: 'none',
+              borderRadius: '0.5rem',
+              fontWeight: 'bold',
+              transition: 'all 0.2s'
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.backgroundColor = '#7c3aed';
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.backgroundColor = '#8b5cf6';
+            }}
+          >
+            📊 订阅管理
+          </Link>
+          
           <button
             onClick={handleSignOut}
             disabled={signingOut}

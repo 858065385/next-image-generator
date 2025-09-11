@@ -38,3 +38,16 @@ export async function isWebhookEventProcessed(eventId: string): Promise<boolean>
   const event = await getWebhookEventByEventId(eventId);
   return event?.processed || false;
 }
+
+export async function getRecentWebhookEventsByUserId(userId: string, since: string) {
+  const db = getDb();
+  const result = await db.query(
+    `SELECT * FROM creem_webhook_events 
+     WHERE created_at >= $1 
+     AND raw_data::text LIKE $2
+     ORDER BY created_at DESC
+     LIMIT 50`,
+    [since, `%${userId}%`]
+  );
+  return result.rows;
+}

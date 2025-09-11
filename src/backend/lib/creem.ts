@@ -116,6 +116,14 @@ export class CreemClient {
       body: JSON.stringify({ product_id: newProductId }),
     });
   }
+
+  // 取消订阅
+  async cancelSubscription(subscriptionId: string, cancelAtPeriodEnd: boolean = true) {
+    return this.makeRequest(`/v1/subscriptions/${subscriptionId}/cancel`, {
+      method: 'POST',
+      body: JSON.stringify({ cancel_at_period_end: cancelAtPeriodEnd }),
+    });
+  }
 }
 
 /**

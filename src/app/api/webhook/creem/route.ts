@@ -8,6 +8,7 @@ import {
   isWebhookEventProcessed,
   markWebhookEventAsProcessed,
 } from "@/backend/services/creem_webhook";
+import { SubscriptionLogger } from "@/backend/utils/subscription-logger";
 import {
   createUserSubscription,
   updateUserSubscription,
@@ -124,6 +125,13 @@ export async function POST(req: Request) {
       return Response.json({ received: true });
     }
 
+    // 记录 webhook 事件
+    SubscriptionLogger.logWebhookEvent(eventType, event.id, undefined, {
+      objectType: event.object?.type,
+      hasSubscription: !!event.object?.subscription,
+      hasCheckout: !!event.object?.checkout
+    });
+
     // 6. 根据事件类型分发处理
     switch (eventType) {
       case "subscription.paid":
@@ -146,21 +154,44 @@ export async function POST(req: Request) {
         await handleSubscriptionUpdated(event);
         break;
 
+      case "subscription.reactivated":
+        // 订阅重新激活：处理取消后的重新激活
+        await handleSubscriptionReactivated(event);
+        break;
+
+      case "subscription.downgraded":
+        // 订阅降级
+        await handleSubscriptionDowngraded(event);
+        break;
+
       case "checkout.completed":
         // 结账完成：记录但不激活订阅（等待支付）
         await handleCheckoutCompleted(event);
         break;
 
       default:
-        console.log(`Unhandled Creem event type: ${eventType}`);
-        console.log('Event object:', JSON.stringify(event.object, null, 2));
+        SubscriptionLogger.warn(`Unhandled Creem event type: ${eventType}`, {
+          operation: "webhook_handler",
+          metadata: {
+            eventId: event.id,
+            eventType,
+            object: event.object
+          }
+        });
     }
 
     // 7. 标记事件为已处理
     await markWebhookEventAsProcessed(event.id);
 
   } catch (error) {
-    console.error("Error processing Creem webhook:", error);
+    SubscriptionLogger.error("Error processing Creem webhook", {
+      operation: "webhook_handler",
+      metadata: {
+        eventId: event?.id,
+        eventType: event?.eventType || event?.type
+      }
+    }, error);
+    
     return Response.json(
       { error: "Error processing webhook" },
       { status: 500 }
@@ -311,19 +342,37 @@ async function handleSubscriptionCanceled(event: any) {
   const existingSubscription = await getUserSubscriptionByUserId(userId);
   
   if (existingSubscription) {
-    // 标记订阅为已取消
-    existingSubscription.status = UserSubscriptionStatusEnum.CANCELLED;
-    existingSubscription.canceled_at = new Date();
+    // 检查是否是立即取消还是周期结束后取消
+    const cancelAtPeriodEnd = subscription.cancel_at_period_end || false;
+    
+    if (cancelAtPeriodEnd) {
+      // 周期结束后取消 - 标记为取消但保持活跃直到周期结束
+      existingSubscription.status = UserSubscriptionStatusEnum.ACTIVE;
+      existingSubscription.cancel_at_period_end = true;
+      existingSubscription.canceled_at = new Date();
+      existingSubscription.cancellation_reason = subscription.cancellation_details?.reason || 'User requested cancellation';
+      console.log(`Subscription ${subscription.id} will cancel at period end: ${subscription.current_period_end}`);
+    } else {
+      // 立即取消 - 标记为已取消
+      existingSubscription.status = UserSubscriptionStatusEnum.CANCELLED;
+      existingSubscription.cancel_at_period_end = false;
+      existingSubscription.canceled_at = new Date();
+      existingSubscription.cancellation_reason = subscription.cancellation_details?.reason || 'Immediate cancellation';
+      existingSubscription.ends_at = new Date();
+      
+      // 立即更新积分状态
+      const creditUsage = await getCreditUsageByUserId(userId);
+      if (creditUsage) {
+        creditUsage.is_subscription_active = false;
+        creditUsage.updated_at = new Date();
+        await updateCreditUsage(creditUsage);
+      }
+    }
+    
     existingSubscription.updated_at = new Date();
     await updateUserSubscription(existingSubscription);
-
-    // 更新积分状态（不再自动发放）
-    const creditUsage = await getCreditUsageByUserId(userId);
-    if (creditUsage) {
-      creditUsage.is_subscription_active = false;
-      creditUsage.updated_at = new Date();
-      await updateCreditUsage(creditUsage);
-    }
+    
+    console.log(`Subscription for user ${userId} cancelled: ${cancelAtPeriodEnd ? 'at period end' : 'immediately'}`);
   }
 }
 
@@ -376,6 +425,86 @@ async function handleSubscriptionUpdated(event: any) {
   console.log("Processing subscription.updated event");
   // 处理订阅更新逻辑，如升降级等
   await handleSubscriptionPaid(event); // 复用 paid 逻辑
+}
+
+/**
+ * 处理订阅重新激活事件
+ * 
+ * 当用户取消后又在周期结束前重新激活订阅时触发
+ */
+async function handleSubscriptionReactivated(event: any) {
+  console.log("Processing subscription.reactivated event");
+  
+  // 验证事件数据
+  if (!event.object || !event.object.subscription) {
+    console.log('No subscription data in event');
+    return;
+  }
+  
+  const { subscription } = event.object;
+  if (!subscription.metadata) {
+    console.log('No metadata in subscription');
+    return;
+  }
+
+  const { userId } = subscription.metadata;
+  const existingSubscription = await getUserSubscriptionByUserId(userId);
+  
+  if (existingSubscription) {
+    // 重新激活订阅
+    existingSubscription.status = UserSubscriptionStatusEnum.ACTIVE;
+    existingSubscription.cancel_at_period_end = false;
+    existingSubscription.canceled_at = null;
+    existingSubscription.cancellation_reason = null;
+    existingSubscription.updated_at = new Date();
+    await updateUserSubscription(existingSubscription);
+
+    // 重新激活积分
+    const creditUsage = await getCreditUsageByUserId(userId);
+    if (creditUsage && creditUsage.period_end > new Date()) {
+      creditUsage.is_subscription_active = true;
+      creditUsage.updated_at = new Date();
+      await updateCreditUsage(creditUsage);
+    }
+    
+    console.log(`Subscription for user ${userId} reactivated`);
+  }
+}
+
+/**
+ * 处理订阅降级事件
+ * 
+ * 当用户从高价计划降级到低价计划时触发
+ */
+async function handleSubscriptionDowngraded(event: any) {
+  console.log("Processing subscription.downgraded event");
+  
+  // 验证事件数据
+  if (!event.object || !event.object.subscription) {
+    console.log('No subscription data in event');
+    return;
+  }
+  
+  const { subscription } = event.object;
+  if (!subscription.metadata) {
+    console.log('No metadata in subscription');
+    return;
+  }
+
+  const { userId, subscriptionPlanId, credit } = subscription.metadata;
+  const existingSubscription = await getUserSubscriptionByUserId(userId);
+  
+  if (existingSubscription) {
+    // 更新订阅计划
+    existingSubscription.subscription_plans_id = parseInt(subscriptionPlanId);
+    existingSubscription.creem_product_id = subscription.product_id;
+    existingSubscription.updated_at = new Date();
+    await updateUserSubscription(existingSubscription);
+
+    // 降级通常会在下一个周期生效，所以这里只是更新记录
+    // 实际的积分调整会在下一个周期开始时处理
+    console.log(`Subscription for user ${userId} downgraded to plan ${subscriptionPlanId}`);
+  }
 }
 
 /**
