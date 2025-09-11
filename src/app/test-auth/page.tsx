@@ -19,15 +19,12 @@ export default function TestAuthPage() {
     }
   };
 
-  const handleSignOut = async () => {
+  const handleSignOut = () => {
     setLoading(true);
-    try {
-      await signOut({ callbackUrl: '/test-auth' });
-    } catch (error) {
-      console.error('Sign out error:', error);
-    } finally {
-      setLoading(false);
-    }
+    // Simple signOut without async/await to avoid any issues
+    signOut({ callbackUrl: '/test-auth' });
+    // Reset loading state after a delay
+    setTimeout(() => setLoading(false), 1000);
   };
 
   if (status === 'loading') {

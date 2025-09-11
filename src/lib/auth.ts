@@ -7,8 +7,18 @@ export const authOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          prompt: "select_account",
+          access_type: "offline",
+          response_type: "code"
+        }
+      }
     }),
   ],
+  pages: {
+    signIn: '/signin',
+  },
   callbacks: {
     async jwt({ token, user, account }) {
       if (user && account) {
