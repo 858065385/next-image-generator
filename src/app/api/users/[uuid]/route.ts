@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserByUuid } from '@/backend/services/user';
 import { getUserSubscriptionInfoByUserId } from '@/backend/services/user_subscription';
 import { getCreditUsageByUserId } from '@/backend/services/credit_usage';
+import { withSelf } from '@/lib/auth-middleware';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(
+export const GET = withSelf()(async (
   request: NextRequest,
   { params }: { params: { uuid: string } }
-) {
+) => {
   try {
     const { uuid } = params;
     
@@ -52,4 +53,4 @@ export async function GET(
       error: error.message
     }, { status: 500 });
   }
-}
+});

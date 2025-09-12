@@ -1,23 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { searchUsers as searchUsersService } from '@/backend/services/user';
 import { getUserSubscriptionInfoByUserId } from '@/backend/services/user_subscription';
 import { getCreditUsageByUserId } from '@/backend/services/credit_usage';
+import { withAdmin } from '@/lib/auth-middleware';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+export const GET = withAdmin(async (request: NextRequest, context: any) => {
   try {
-    // 检查管理员权限
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({
-        code: 401,
-        error: 'Unauthorized'
-      }, { status: 401 });
-    }
-
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
     const page = parseInt(searchParams.get('page') || '1');
@@ -71,4 +61,4 @@ export async function GET(request: NextRequest) {
       error: error.message
     }, { status: 500 });
   }
-}
+});

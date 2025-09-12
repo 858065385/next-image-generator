@@ -1,14 +1,16 @@
 export const dynamic = 'force-dynamic';
 
+import { NextRequest, NextResponse } from 'next/server';
 import { pageListEffectResultsByUserId } from "@/backend/services/effect_result";
+import { withAuth } from '@/lib/auth-middleware';
 
 export const maxDuration = 60; // Set max duration to 60 seconds (1 minute)
 
-export async function GET(request: Request) {
+export const GET = withAuth(async (request: NextRequest, context: any) => {
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get("user_id");
   if (!userId) {
-    return Response.json({ detail: "User ID is required" }, { status: 400 });
+    return NextResponse.json({ detail: "User ID is required" }, { status: 400 });
   }
   const page = searchParams.get("page") || "1";
   const pageSize = searchParams.get("page_size") || "10";
@@ -24,5 +26,5 @@ export async function GET(request: Request) {
   
   console.log('[DEBUG] Found results:', results?.length || 0);
   
-  return Response.json(results);
-}
+  return NextResponse.json(results);
+});

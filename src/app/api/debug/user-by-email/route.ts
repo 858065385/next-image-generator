@@ -2,8 +2,9 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from "next/server";
 import { getByEmail } from "@/backend/models/user";
+import { withDev } from "@/lib/auth-middleware";
 
-export async function GET(request: NextRequest) {
+export const GET = withDev(async (request: NextRequest) => {
   try {
     const { searchParams } = new URL(request.url);
     const email = searchParams.get('email');
@@ -35,4 +36,4 @@ export async function GET(request: NextRequest) {
       details: error.message 
     }, { status: 500 });
   }
-}
+});

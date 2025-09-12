@@ -9,6 +9,7 @@ CREATE TABLE users (
   nickname text NOT NULL,                   -- 用户昵称
   avatar_url text NOT NULL,                 -- 用户头像URL
   locale text NULL,                         -- 用户语言/地区设置
+  role VARCHAR(20) NOT NULL DEFAULT 'user', -- 用户角色（admin, user, moderator）
   signin_type text NULL,                    -- 登录类型（如：email, google, github等）
   signin_ip text NULL,                      -- 最后登录IP地址
   signin_provider text NULL,                -- 第三方登录提供商（如：google, github等）

@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserByUuid } from '@/backend/services/user';
 import { getUserSubscriptionInfoByUserId } from '@/backend/services/user_subscription';
 import { getCreditUsageByUserId } from '@/backend/services/credit_usage';
+import { withAdmin } from '@/lib/auth-middleware';
 
-export async function GET(
+export const GET = withAdmin(async (
   request: NextRequest,
   { params }: { params: { uuid: string } }
-) {
+) => {
   try {
     const userUuid = params.uuid;
     
@@ -41,4 +42,4 @@ export async function GET(
       error: error.message
     }, { status: 500 });
   }
-}
+});

@@ -11,11 +11,12 @@ import {
 } from '@/backend/services/credit_usage';
 import { UserSubscriptionStatusEnum } from '@/backend/types/enum/user_subscription_enum';
 import { getById } from '@/backend/models/subscription_plan';
+import { withAdmin } from '@/lib/auth-middleware';
 
-export async function POST(
+export const POST = withAdmin(async (
   request: NextRequest,
   { params }: { params: { id: string } }
-) {
+) => {
   try {
     // ID格式为 "uuid,email"
     const [uuid, email] = params.id.split(',');
@@ -132,4 +133,4 @@ export async function POST(
       error: error.message
     }, { status: 500 });
   }
-}
+});

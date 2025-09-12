@@ -2,8 +2,9 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/backend/config/db';
+import { withAdmin } from '@/lib/auth-middleware';
 
-export async function GET(request: NextRequest) {
+export const GET = withAdmin(async (request: NextRequest) => {
   try {
     const { searchParams } = new URL(request.url);
     const period = searchParams.get('period') || '7d'; // 7d, 30d, 90d, 1y
@@ -111,4 +112,4 @@ export async function GET(request: NextRequest) {
       error: error.message
     }, { status: 500 });
   }
-}
+});

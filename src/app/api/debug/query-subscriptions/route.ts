@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/backend/config/db';
+import { withDev } from '@/lib/auth-middleware';
 
-export async function GET(request: NextRequest) {
+export const GET = withDev(async (request: NextRequest) => {
   try {
     const db = getDb();
     
@@ -77,4 +78,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

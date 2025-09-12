@@ -6,9 +6,10 @@ import {
   reducePeriodRemainCountByUserId,
   checkCreditUsageByUserId
 } from '@/backend/services/credit_usage';
+import { withAdmin } from '@/lib/auth-middleware';
 
 // 获取用户积分信息
-export async function POST(request: NextRequest) {
+export const POST = withAdmin(async (request: NextRequest, context: any) => {
   try {
     const { user_id } = await request.json();
     
@@ -41,10 +42,10 @@ export async function POST(request: NextRequest) {
       error: error.message
     }, { status: 500 });
   }
-}
+});
 
 // 创建积分记录
-export async function PUT(request: NextRequest) {
+export const PUT = withAdmin(async (request: NextRequest, context: any) => {
   try {
     const body = await request.json();
     const { 
@@ -87,10 +88,10 @@ export async function PUT(request: NextRequest) {
       error: error.message
     }, { status: 500 });
   }
-}
+});
 
 // 更新积分记录
-export async function PATCH(request: NextRequest) {
+export const PATCH = withAdmin(async (request: NextRequest, context: any) => {
   try {
     const body = await request.json();
     const { 
@@ -140,4 +141,4 @@ export async function PATCH(request: NextRequest) {
       error: error.message
     }, { status: 500 });
   }
-}
+});

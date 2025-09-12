@@ -2,15 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserByUuid } from '@/backend/services/user';
 import { getCreditUsageByUserId } from '@/backend/services/credit_usage';
 import { pageListEffectResultsByUserId } from '@/backend/services/effect_result';
+import { withSelf } from '@/lib/auth-middleware';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(
+export const GET = withSelf()(async (
   request: NextRequest,
-  { params }: { params: { uuid: string } }
-) {
+  context: any
+) => {
   try {
-    const { uuid } = params;
+    const { uuid } = context.params;
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const pageSize = parseInt(searchParams.get('limit') || '20');
@@ -78,4 +79,4 @@ export async function GET(
       error: error.message
     }, { status: 500 });
   }
-}
+});

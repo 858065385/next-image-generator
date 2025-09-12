@@ -2,8 +2,9 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/backend/config/db';
+import { withAdmin } from '@/lib/auth-middleware';
 
-export async function GET(request: NextRequest) {
+export const GET = withAdmin(async (request: NextRequest) => {
   try {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
@@ -93,4 +94,4 @@ export async function GET(request: NextRequest) {
       error: error instanceof Error ? error.message : String(error)
     }, { status: 500 });
   }
-}
+});

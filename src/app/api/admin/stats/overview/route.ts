@@ -2,8 +2,9 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/backend/config/db';
+import { withAdmin } from '@/lib/auth-middleware';
 
-export async function GET() {
+export const GET = withAdmin(async (request: NextRequest) => {
   try {
     const db = await getDb();
     
@@ -87,4 +88,4 @@ export async function GET() {
       error: error.message
     }, { status: 500 });
   }
-}
+});

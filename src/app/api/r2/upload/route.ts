@@ -2,8 +2,9 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from "next/server";
 import { generatePresignedUrl } from "@/backend/lib/r2";
+import { withAuth } from "@/lib/auth-middleware";
 
-export async function POST(req: NextRequest) {
+export const POST = withAuth(async (req: NextRequest) => {
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File;
@@ -40,4 +41,4 @@ export async function POST(req: NextRequest) {
       { status: 500 }
     );
   }
-}
+});

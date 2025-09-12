@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCreditUsageByUserId } from '@/backend/services/credit_usage';
 import { pageListEffectResultsByUserId } from '@/backend/services/effect_result';
+import { withAuth } from '@/lib/auth-middleware';
 
 // 获取积分使用历史
-export async function POST(request: NextRequest) {
+export const POST = withAuth(async (request: NextRequest, context: any) => {
   try {
     const { user_id, page = 1, page_size = 20 } = await request.json();
     
@@ -68,4 +69,4 @@ export async function POST(request: NextRequest) {
       error: error.message
     }, { status: 500 });
   }
-}
+});

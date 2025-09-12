@@ -5,11 +5,12 @@ import {
   createCreditUsage
 } from '@/backend/services/credit_usage';
 import { getUserByUuidAndEmail } from '@/backend/services/user';
+import { withAdmin } from '@/lib/auth-middleware';
 
-export async function POST(
+export const POST = withAdmin(async (
   request: NextRequest,
   { params }: { params: { id: string } }
-) {
+) => {
   try {
     const userId = params.id;
     const { amount, reason, operation = 'add' } = await request.json();
@@ -81,4 +82,4 @@ export async function POST(
       error: error.message
     }, { status: 500 });
   }
-}
+});

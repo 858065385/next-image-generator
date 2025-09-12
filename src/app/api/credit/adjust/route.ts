@@ -5,9 +5,10 @@ import {
   checkCreditUsageByUserId,
   updateCreditUsage
 } from '@/backend/services/credit_usage';
+import { withAdmin } from '@/lib/auth-middleware';
 
 // 增加积分
-export async function POST(request: NextRequest) {
+export const POST = withAdmin(async (request: NextRequest, context: any) => {
   try {
     const { user_id, amount, reason } = await request.json();
     
@@ -53,10 +54,10 @@ export async function POST(request: NextRequest) {
       error: error.message
     }, { status: 500 });
   }
-}
+});
 
 // 扣除积分
-export async function DELETE(request: NextRequest) {
+export const DELETE = withAdmin(async (request: NextRequest, context: any) => {
   try {
     const { user_id, amount, reason } = await request.json();
     
@@ -104,4 +105,4 @@ export async function DELETE(request: NextRequest) {
       error: error.message
     }, { status: 500 });
   }
-}
+});

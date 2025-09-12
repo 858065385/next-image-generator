@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/backend/config/db';
+import { withAdmin } from '@/lib/auth-middleware';
 
-export async function POST(request: NextRequest) {
+export const POST = withAdmin(async (request: NextRequest) => {
   try {
     const { user_ids, amount, reason, operation = 'add' } = await request.json();
     
@@ -124,4 +125,4 @@ export async function POST(request: NextRequest) {
       error: error instanceof Error ? error.message : String(error)
     }, { status: 500 });
   }
-}
+});

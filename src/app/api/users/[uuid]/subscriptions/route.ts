@@ -2,15 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserByUuid } from '@/backend/services/user';
 import { getUserSubscriptionByUserId } from '@/backend/services/user_subscription';
 import { getPaymentHistoryByUserId } from '@/backend/services/payment_history';
+import { withSelf } from '@/lib/auth-middleware';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(
+export const GET = withSelf()(async (
   request: NextRequest,
-  { params }: { params: { uuid: string } }
-) {
+  context: any
+) => {
   try {
-    const { uuid } = params;
+    const { uuid } = context.params;
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
@@ -37,7 +38,7 @@ export async function GET(
     if (subscriptions) {
       subscriptionHistory.push({
         id: subscriptions.id,
-        plan_name: subscriptionInfo?.plan_name || `Plan ${subscriptions.subscription_plans_id}`,
+        plan_name: `Plan ${subscriptions.subscription_plans_id}`,
         status: subscriptions.status,
         current_period_start: subscriptions.current_period_start,
         current_period_end: subscriptions.current_period_end,
@@ -93,4 +94,4 @@ export async function GET(
       error: error.message
     }, { status: 500 });
   }
-}
+});

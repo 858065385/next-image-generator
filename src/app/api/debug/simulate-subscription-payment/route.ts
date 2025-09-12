@@ -11,8 +11,9 @@ import {
 } from '@/backend/services/credit_usage';
 import { UserSubscriptionStatusEnum } from '@/backend/types/enum/user_subscription_enum';
 import { getById } from '@/backend/models/subscription_plan';
+import { withDev } from '@/lib/auth-middleware';
 
-export async function POST(request: NextRequest) {
+export const POST = withDev(async (request: NextRequest) => {
   try {
     const { 
       user_id, 
@@ -158,4 +159,4 @@ export async function POST(request: NextRequest) {
       error: error.message
     }, { status: 500 });
   }
-}
+});
