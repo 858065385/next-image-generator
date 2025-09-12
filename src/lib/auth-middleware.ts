@@ -1,12 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { getUserByEmail } from '@/backend/services/user';
 
 export interface AuthContext {
   session: any;
   user?: any;
+  isAdmin?: boolean;
 }
+
+// 管理员 UUID 白名单
+const ADMIN_UUIDS = [
+  '10086',  // 主管理员
+  // 可以添加更多管理员 UUID
+  // 'admin2',
+  // 'admin3',
+];
 
 /**
  * 检查用户是否已登录
@@ -33,9 +41,14 @@ export async function requireAuth(request: NextRequest): Promise<AuthContext | N
 }
 
 /**
- * 检查用户是否具有指定角色
+ * 检查用户是否在管理员列表中
  */
-export async function requireRole(request: NextRequest, role: string): Promise<AuthContext | NextResponse> {
+export async function requireAdmin(request: NextRequest): Promise<AuthContext | NextResponse> {
+  // 开发环境直接通过
+  if (process.env.NODE_ENV === 'development') {
+    return await requireAuth(request);
+  }
+  
   const authResult = await requireAuth(request);
   
   if (authResult instanceof NextResponse) {
@@ -43,18 +56,19 @@ export async function requireRole(request: NextRequest, role: string): Promise<A
   }
   
   try {
-    const user = await getUserByEmail(authResult.session.user.email);
+    const userUuid = authResult.session.user.uuid || authResult.session.user.id;
     
-    if (!user || user.role !== role) {
+    if (!ADMIN_UUIDS.includes(userUuid)) {
+      console.warn(`Unauthorized admin access attempt by UUID: ${userUuid}`);
       return NextResponse.json(
         { code: 403, error: 'Forbidden', message: '权限不足' },
         { status: 403 }
       );
     }
     
-    return { ...authResult, user };
+    return { ...authResult, isAdmin: true };
   } catch (error) {
-    console.error('Role check error:', error);
+    console.error('Admin check error:', error);
     return NextResponse.json(
       { code: 500, error: 'Internal Server Error' },
       { status: 500 }
@@ -63,16 +77,14 @@ export async function requireRole(request: NextRequest, role: string): Promise<A
 }
 
 /**
- * 检查是否是管理员
- */
-export async function requireAdmin(request: NextRequest): Promise<AuthContext | NextResponse> {
-  return await requireRole(request, 'admin');
-}
-
-/**
  * 检查用户是否只能访问自己的数据
  */
 export async function requireSelf(request: NextRequest, userUuid: string): Promise<AuthContext | NextResponse> {
+  // 开发环境直接通过
+  if (process.env.NODE_ENV === 'development') {
+    return await requireAuth(request);
+  }
+  
   const authResult = await requireAuth(request);
   
   if (authResult instanceof NextResponse) {
@@ -80,22 +92,23 @@ export async function requireSelf(request: NextRequest, userUuid: string): Promi
   }
   
   try {
-    const user = await getUserByEmail(authResult.session.user.email);
+    const currentUserUuid = authResult.session.user.uuid || authResult.session.user.id;
     
     // 管理员可以访问所有用户数据
-    if (user.role === 'admin') {
-      return { ...authResult, user };
+    if (ADMIN_UUIDS.includes(currentUserUuid)) {
+      return { ...authResult, isAdmin: true };
     }
     
     // 普通用户只能访问自己的数据
-    if (user.uuid !== userUuid) {
+    if (currentUserUuid !== userUuid) {
+      console.warn(`Unauthorized access attempt: UUID ${currentUserUuid} trying to access ${userUuid}'s data`);
       return NextResponse.json(
         { code: 403, error: 'Forbidden', message: '只能访问自己的数据' },
         { status: 403 }
       );
     }
     
-    return { ...authResult, user };
+    return authResult;
   } catch (error) {
     console.error('Self access check error:', error);
     return NextResponse.json(
@@ -134,22 +147,16 @@ export function withAuth(handler: (request: NextRequest, context: AuthContext) =
   };
 }
 
-export function withRole(role: string) {
-  return function (handler: (request: NextRequest, context: AuthContext) => Promise<NextResponse>) {
-    return async (request: NextRequest) => {
-      const authResult = await requireRole(request, role);
-      
-      if (authResult instanceof NextResponse) {
-        return authResult;
-      }
-      
-      return handler(request, authResult);
-    };
-  };
-}
-
 export function withAdmin(handler: (request: NextRequest, context: AuthContext) => Promise<NextResponse>) {
-  return withRole('admin')(handler);
+  return async (request: NextRequest) => {
+    const authResult = await requireAdmin(request);
+    
+    if (authResult instanceof NextResponse) {
+      return authResult;
+    }
+    
+    return handler(request, authResult);
+  };
 }
 
 export function withSelf(userUuidParam: string = 'uuid') {

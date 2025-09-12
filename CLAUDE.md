@@ -1,171 +1,190 @@
 # CLAUDE.md
 
-本文件为 Claude Code (claude.ai/code) 提供在此代码库中工作的指导。
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## 开发命令
+## Development Commands
 
 ```bash
-# 开发服务器
-npm run dev          # 启动开发服务器 localhost:3000
+# Development server
+npm run dev          # Start development server on localhost:3000
+npm run dev:preview  # Start with preview environment config on port 3001
+npm run dev:prod     # Start with production environment config on port 3001
 
-# 生产构建
-npm run build        # 构建生产版本
-npm run start        # 启动生产服务器
+# Production builds
+npm run build        # Build for production
+npm run build:preview # Build with preview environment
+npm run build:prod   # Build with production environment
+npm run start        # Start production server
 
-# 代码质量
-npm run lint         # 运行 ESLint 检查
+# Code quality
+npm run lint         # Run ESLint checks
 ```
 
-## 数据库设置
+## Database Setup
 
-使用 schema 初始化 PostgreSQL 数据库：
+Initialize PostgreSQL database with schema:
 ```bash
 psql -U your_username -d your_database -f src/backend/sql/init.sql
 ```
 
-## 架构概述
+## Architecture Overview
 
-这是一个基于 Next.js 14 的 API-only 服务，专用于 AI 驱动的图像和视频生成。为了性能优化，前端已被完全移除，只保留干净的 REST API 后端。
+This is a Next.js 14 API-only service specialized for AI-driven image and video generation. The frontend has been completely removed for performance optimization, leaving only a clean REST API backend.
 
-### 后端架构 (`src/backend/`)
+### Backend Architecture (`src/backend/`)
 
-**数据层结构：**
-- `models/` - 数据库访问层，包含原生 SQL 查询
-- `service/` - 业务逻辑层，协调模型操作
-- `config/db.ts` - PostgreSQL 连接池管理
-- `type/type.ts` - 所有数据库实体的 TypeScript 接口
+**Data Layer Structure:**
+- `models/` - Database access layer with native SQL queries
+- `service/` - Business logic layer coordinating model operations
+- `config/db.ts` - PostgreSQL connection pool management
+- `type/type.ts` - TypeScript interfaces for all database entities
 
-**核心服务：**
-- `generate-_check.ts` - 生成前验证（认证、积分、订阅）
-- 积分系统通过 `credit_usage` 表跟踪每个计费周期的使用情况
-- 通过 Creem API 集成进行订阅管理
-- 通过 Cloudflare R2 进行文件存储（S3 兼容）
+**Core Services:**
+- `generate-_check.ts` - Pre-generation validation (authentication, credits, subscription)
+- Credit system tracks usage per billing cycle via `credit_usage` table
+- Subscription management through Creem API integration
+- File storage via Cloudflare R2 (S3-compatible)
 
-**数据库模式：**
-- `users` - 用户账户及 OAuth 提供商详情
-- `credit_usage` - 积分跟踪每计费周期使用情况
-- `effect` - AI 模型/端点（Replicate API 集成）
-- `effect_result` - 生成内容结果和元数据
-- `subscription_plans` - 可用订阅层级
-- `user_subscriptions` - 通过 Creem 的活跃订阅
-- `payment_history` - 支付交易记录
+**Database Schema:**
+- `users` - User accounts and OAuth provider details
+- `credit_usage` - Credit tracking per billing cycle
+- `effect` - AI models/endpoints (Replicate API integration)
+- `effect_result` - Generated content results and metadata
+- `subscription_plans` - Available subscription tiers
+- `user_subscriptions` - Active subscriptions via Creem
+- `payment_history` - Payment transaction records
 
-### API 路由结构 (`src/app/api/`)
+### API Route Structure (`src/app/api/`)
 
-**身份认证：**
+**Authentication:**
 - `/api/auth/[...nextauth]/route.ts` - NextAuth.js Google OAuth
-- `/api/auth/test/route.ts` - 认证测试
+- `/api/auth/test/route.ts` - Authentication test
 
-**AI 生成：**
-- `/api/predictions/text_to_image/route.ts` - 文字生成图像
-- `/api/predictions/img_to_video/route.ts` - 图像生成视频
-- `/api/predictions/[id]/route.ts` - 预测状态查询
+**AI Generation:**
+- `/api/predictions/text_to_image/route.ts` - Text to image generation
+- `/api/predictions/img_to_video/route.ts` - Image to video generation
+- `/api/predictions/[id]/route.ts` - Prediction status polling
 
-**支付与订阅：**
-- `/api/creem/checkout/route.ts` - Creem 结账会话创建
-- `/api/webhook/creem/route.ts` - Creem webhook 处理
-- `/api/webhook/replicate/route.ts` - Replicate webhook 处理
+**Payment & Subscription:**
+- `/api/creem/checkout/route.ts` - Creem checkout session creation
+- `/api/webhook/creem/route.ts` - Creem webhook handling
+- `/api/webhook/replicate/route.ts` - Replicate webhook handling
 
-**用户管理：**
-- `/api/user/check_pro_status/route.ts` - 用户订阅状态
-- `/api/user/get_user_subscription_info/route.ts` - 订阅详情
+**User Management:**
+- `/api/user/check_pro_status/route.ts` - User subscription status
+- `/api/user/get_user_subscription_info/route.ts` - Subscription details
 
-**内容管理：**
-- `/api/effect_result/count_all/route.ts` - 总结果计数
-- `/api/effect_result/list_by_user_id/route.ts` - 用户特定结果
-- `/api/effect_result/update/route.ts` - 结果更新
+**Content Management:**
+- `/api/effect_result/count_all/route.ts` - Total result count
+- `/api/effect_result/list_by_user_id/route.ts` - User-specific results
+- `/api/effect_result/update/route.ts` - Result updates
 
-**文件存储：**
-- `/api/r2/upload/route.ts` - Cloudflare R2 文件上传
+**File Storage:**
+- `/api/r2/upload/route.ts` - Cloudflare R2 file upload
 
-### AI 集成
+### Authentication & Authorization
 
-**支持的平台：**
-- Replicate API 用于 AI 模型执行
-- 预配置模型：Kling v2.1（视频，15积分），Flux1.1 Pro（图像，1积分）
+**Middleware System (`src/lib/auth-middleware.ts`):**
+- `requireAuth()` - Basic authentication check
+- `requireAdmin()` - Admin access (using UUID whitelist)
+- `requireSelf()` - User data ownership validation
+- `requireDev()` - Development environment only
 
-**生成流程：**
-1. 预检查：`generateCheck()` 验证用户认证、订阅和积分
-2. 使用模型特定参数调用 Replicate API
-3. 将结果存储在 `effect_result` 表中
-4. 媒体文件上传到 Cloudflare R2
-5. 从用户配额中扣除积分
+**Admin UUID System:**
+- Admin users identified by UUID in `ADMIN_UUIDS` array
+- Default admin UUID: '10086'
+- Development environment bypasses admin checks
 
-### 文件存储 (R2)
+### AI Integration
 
-**`lib/r2.ts` 中的关键函数：**
-- `generatePresignedUrl()` - 用于浏览器直接上传
-- `uploadImageToR2()` / `uploadVideoToR2()` - 服务端从 URL 上传
-- 文件组织结构：`ssat/{type}/{uuid}_{filename}`
+**Supported Platforms:**
+- Replicate API for AI model execution
+- Pre-configured models: Kling v2.1 (video, 15 credits), Flux1.1 Pro (image, 1 credit)
 
-### 环境变量
+**Generation Flow:**
+1. Pre-check: `generateCheck()` validates user auth, subscription, and credits
+2. Call Replicate API with model-specific parameters
+3. Store results in `effect_result` table
+4. Upload media files to Cloudflare R2
+5. Deduct credits from user quota
 
-后端功能所需的环境变量：
+### File Storage (R2)
+
+**Key Functions in `lib/r2.ts`:**
+- `generatePresignedUrl()` - For direct browser uploads
+- `uploadImageToR2()` / `uploadVideoToR2()` - Server-side uploads from URL
+- File organization: `ssat/{type}/{uuid}_{filename}`
+
+### Environment Variables
+
+Required environment variables for backend functionality:
 ```
-# 数据库
-POSTGRES_URL=            # PostgreSQL 连接字符串
+# Database
+POSTGRES_URL=            # PostgreSQL connection string
 
-# 身份认证
-NEXTAUTH_SECRET=         # NextAuth.js 密钥
+# Authentication
+NEXTAUTH_SECRET=         # NextAuth.js secret
 GOOGLE_CLIENT_ID=        # Google OAuth
 GOOGLE_CLIENT_SECRET=
 
-# AI 服务
-REPLICATE_API_TOKEN=     # Replicate API 访问
+# AI Services
+REPLICATE_API_TOKEN=     # Replicate API access
 REPLICATE_WEBHOOK_SECRET=
 
-# 文件存储
+# File Storage
 R2_ACCOUNT_ID=           # Cloudflare R2
 R2_ACCESS_KEY_ID=
 R2_SECRET_ACCESS_KEY=
 R2_BUCKET_NAME=
 R2_ENDPOINT=
 
-# 支付 (Creem)
-CREEM_API_KEY=           # Creem API 密钥
-CREEM_WEBHOOK_SECRET=    # Webhook 密钥
+# Payment (Creem)
+CREEM_API_KEY=           # Creem API key
+CREEM_WEBHOOK_SECRET=    # Webhook secret
 CREEM_API_BASE_URL=      # https://api.creem.io
-CREEM_PRODUCT_MONTHLY_ID= # 月度产品 ID
-CREEM_PRODUCT_YEARLY_ID=  # 年度产品 ID
-CREEM_SUCCESS_URL=       # 支付成功后跳转的URL（默认：/admin/payment-result?success=true）
+CREEM_PRODUCT_MONTHLY_ID= # Monthly product ID
+CREEM_PRODUCT_YEARLY_ID=  # Yearly product ID
+CREEM_SUCCESS_URL=       # Success redirect URL (default: /admin/payment-result?success=true)
 ```
 
-## 关键模式
+## Key Patterns
 
-**数据库访问：**
-- 模型通过 pg Pool 使用参数化查询
-- 服务协调多个模型调用
-- 所有函数使用 async/await，返回类型化接口
+**Database Access:**
+- Models use pg Pool with parameterized queries
+- Services coordinate multiple model calls
+- All functions use async/await, return typed interfaces
 
-**错误处理：**
-- 自定义 ResponseCodeEnum 用于一致的 API 响应
-- 积分验证返回特定错误码（-1：未初始化，-2：无订阅，-3：超出限制）
+**Error Handling:**
+- Custom ResponseCodeEnum for consistent API responses
+- Credit validation returns specific error codes (-1: uninitialized, -2: no subscription, -3: exceeded limit)
 
-**类型安全：**
-- `type/type.ts` 中的全面 TypeScript 接口
-- 数据库行格式化器将 QueryResultRow 转换为类型化对象
-- `type/domain/` 中复杂业务对象的领域特定类型
-- `type/enum/` 中一致的状态码和支付状态枚举
+**Type Safety:**
+- Comprehensive TypeScript interfaces in `type/type.ts`
+- Database row formatters convert QueryResultRow to typed objects
+- Domain-specific types for complex business objects in `type/domain/`
+- Consistent status codes and payment status enums in `type/enum/`
 
-## 当前配置状态
+## Current Configuration Status
 
-**已配置服务：**
-- ✅ **数据库**: PostgreSQL (Supabase)
-- ✅ **身份认证**: Google OAuth via NextAuth.js
-- ✅ **AI 服务**: Replicate API
-- ✅ **文件存储**: Cloudflare R2
-- ✅ **类型安全**: 全面 TypeScript
+**Configured Services:**
+- ✅ **Database**: PostgreSQL (Supabase)
+- ✅ **Authentication**: Google OAuth via NextAuth.js
+- ✅ **AI Services**: Replicate API
+- ✅ **File Storage**: Cloudflare R2
+- ✅ **Type Safety**: Comprehensive TypeScript
+- ✅ **Auth Middleware**: Complete API protection system
 
-**需要配置：**
-- ⚠️ **支付**: 需要 Creem API 配置
-- ⚠️ **生产 URL**: 需要更新 OAuth 回调
+**Needs Configuration:**
+- ⚠️ **Payment**: Requires Creem API configuration
+- ⚠️ **Production URLs**: Need to update OAuth callbacks
 
-## API 使用
+## API Usage
 
-访问 `http://localhost:3000` 查看所有可用的 API 端点列表。使用 Postman、curl 或集成到您自己的前端来与这些 API 交互。
+Visit `http://localhost:3000` to see all available API endpoints. Use Postman, curl, or integrate with your own frontend to interact with these APIs.
 
-## 注意事项
+## Important Notes
 
-- **支付**: 已从 Stripe 迁移到 Creem（见 `CREEM_MIGRATION.md`）
-- **前端**: 为性能考虑已完全移除
-- **架构**: 干净的 API-only 服务，包含完整的后端逻辑
+- **Payment**: Migrated from Stripe to Creem
+- **Frontend**: Completely removed for performance
+- **Architecture**: Clean API-only service with complete backend logic
+- **Admin Access**: Use UUID '10086' for admin privileges in development

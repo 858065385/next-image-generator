@@ -1,7 +1,0 @@
-{
-  "build": {
-    "env": {
-      "CUSTOM_KEY": "value"
-    }
-  }
-}
