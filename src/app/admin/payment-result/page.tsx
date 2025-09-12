@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 
 function PaymentResultContent() {
   const searchParams = useSearchParams();
@@ -519,7 +520,7 @@ function PaymentResultContent() {
                 如果问题持续存在，请尝试以下操作：
               </p>
               <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <a
+                <Link
                   href="/test-payment"
                   style={{
                     display: 'inline-block',
@@ -539,8 +540,8 @@ function PaymentResultContent() {
                   }}
                 >
                   重新尝试支付
-                </a>
-                <a
+                </Link>
+                <Link
                   href="/admin-enhanced"
                   style={{
                     display: 'inline-block',
@@ -560,14 +561,14 @@ function PaymentResultContent() {
                   }}
                 >
                   查看账户状态
-                </a>
+                </Link>
               </div>
             </div>
           </>
         )}
         
         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <a
+          <Link
             href="/"
             style={{
               display: 'inline-block',
@@ -593,7 +594,7 @@ function PaymentResultContent() {
             }}
           >
             🏠 返回首页
-          </a>
+          </Link>
         </div>
         
         <div style={{ marginTop: '2rem', fontSize: '0.875rem', color: '#6b7280' }}>
@@ -611,15 +612,15 @@ function PaymentResultContent() {
           如有任何问题，请联系客服支持
         </p>
         <div style={{ display: 'flex', gap: '2rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <a href="/pricing" style={{ color: '#3b82f6' }}>
+          <Link href="/pricing" style={{ color: '#3b82f6' }}>
             查看订阅计划
-          </a>
-          <a href="/admin-enhanced" style={{ color: '#3b82f6' }}>
+          </Link>
+          <Link href="/admin-enhanced" style={{ color: '#3b82f6' }}>
             管理账户
-          </a>
-          <a href="/" style={{ color: '#3b82f6' }}>
+          </Link>
+          <Link href="/" style={{ color: '#3b82f6' }}>
             返回首页
-          </a>
+          </Link>
         </div>
       </div>
     </div>

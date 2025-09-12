@@ -1,10 +1,20 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { searchUsers, getAllUsers } from '@/backend/services/user';
 
 export async function GET(request: NextRequest) {
   try {
+    // 检查管理员权限
+    const session = await getServerSession(authOptions);
+    if (!session) {
+      return NextResponse.json({
+        code: 401,
+        error: 'Unauthorized'
+      }, { status: 401 });
+    }
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search');
     const page = parseInt(searchParams.get('page') || '1');

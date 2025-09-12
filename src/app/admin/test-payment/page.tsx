@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 
 export default function TestPaymentPage() {
   const [loading, setLoading] = useState(false);
@@ -172,12 +173,12 @@ export default function TestPaymentPage() {
       </div>
       
       <div style={{ marginTop: '2rem', display: 'flex', gap: '2rem' }}>
-        <a href="/admin-enhanced" style={{ color: '#007bff' }}>
+        <Link href="/admin-enhanced" style={{ color: '#007bff' }}>
           ← 返回管理员页面
-        </a>
-        <a href="/" style={{ color: '#6c757d' }}>
+        </Link>
+        <Link href="/" style={{ color: '#6c757d' }}>
           ← 返回首页
-        </a>
+        </Link>
       </div>
     </div>
   );
