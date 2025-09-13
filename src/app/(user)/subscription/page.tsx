@@ -4,18 +4,15 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 
 interface SubscriptionData {
-  user: {
-    id: string
-    email: string
-    name: string
-  }
-  subscription: {
-    status: string
-    plan_name: string
-    current_period_end: string
-    cancel_at_period_end?: boolean
-  }
-  credit_usage: {
+  plan_name: string
+  plan_interval: string
+  plan_price: number
+  subscription_status?: string
+  remain_count: number
+  current_period_start: string
+  current_period_end?: string
+  cancel_at_period_end?: boolean
+  credit_usage?: {
     credits_total: number
     credits_used: number
     credits_remain: number
@@ -201,24 +198,24 @@ export default function SubscriptionPage() {
       <div className="bg-white rounded-lg shadow p-6 mb-8">
         <h2 className="text-xl font-semibold mb-4">当前订阅</h2>
         <div className="border rounded-lg p-6 bg-gradient-to-r from-blue-50 to-purple-50">
-          {userData?.subscription?.status === 'active' ? (
+          {userData?.subscription_status === 'active' ? (
           <>
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-lg font-medium text-gray-900">
-                  {userData.subscription.plan_name || '专业版'}
+                  {userData.plan_name || '专业版'}
                 </h3>
                 <div className="flex items-center space-x-2 mt-1">
                   <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    userData.subscription.status === 'active' 
+                    userData.subscription_status === 'active' 
                       ? 'bg-green-100 text-green-800' 
                       : 'bg-red-100 text-red-800'
                   }`}>
-                    {userData.subscription.status === 'active' ? '活跃' : '已过期'}
+                    {userData.subscription_status === 'active' ? '活跃' : '已过期'}
                   </span>
-                  {userData.subscription.cancel_at_period_end && (
+                  {userData.cancel_at_period_end && (
                     <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                      将于 {new Date(userData.subscription.current_period_end).toLocaleDateString('zh-CN')} 取消
+                      将于 {new Date(userData.current_period_end).toLocaleDateString('zh-CN')} 取消
                     </span>
                   )}
                 </div>
@@ -234,22 +231,22 @@ export default function SubscriptionPage() {
             <div className="grid md:grid-cols-3 gap-4 mt-6 pt-6 border-t">
               <div className="text-center">
                 <p className="text-sm text-gray-600">本月积分</p>
-                <p className="text-xl font-bold text-blue-600">{userData?.credit_usage?.credits_total || 0}</p>
+                <p className="text-xl font-bold text-blue-600">{userData.remain_count || 0}</p>
               </div>
               <div className="text-center">
                 <p className="text-sm text-gray-600">已使用</p>
-                <p className="text-xl font-bold text-gray-900">{userData?.credit_usage?.credits_used || 0}</p>
+                <p className="text-xl font-bold text-gray-900">0</p>
               </div>
               <div className="text-center">
                 <p className="text-sm text-gray-600">剩余</p>
                 <p className="text-xl font-bold text-green-600">
-                  {userData?.credit_usage?.credits_remain || 0}
+                  {userData.remain_count || 0}
                 </p>
               </div>
             </div>
 
             <div className="mt-6 flex space-x-4">
-              {userData.subscription.cancel_at_period_end ? (
+              {userData.cancel_at_period_end ? (
                 <button
                   onClick={handleReactivateSubscription}
                   className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
@@ -285,10 +282,10 @@ export default function SubscriptionPage() {
         <h2 className="text-xl font-semibold mb-4">更改订阅计划</h2>
         <div className="grid md:grid-cols-3 gap-6">
           {plans.map((plan) => {
-            const isCurrentPlan = userData?.subscription?.status === 'active' && (
-              (plan.id === 'pro_monthly' && !userData.subscription.plan_name?.includes('yearly')) ||
-              (plan.id === 'pro_yearly' && userData.subscription.plan_name?.includes('yearly')) ||
-              (plan.id === 'free' && userData.subscription.status !== 'active')
+            const isCurrentPlan = userData?.subscription_status === 'active' && (
+              (plan.id === 'pro_monthly' && userData?.plan_interval === 'month') ||
+              (plan.id === 'pro_yearly' && userData?.plan_interval === 'year') ||
+              (plan.id === 'free' && userData?.subscription_status !== 'active')
             )
             
             return (
