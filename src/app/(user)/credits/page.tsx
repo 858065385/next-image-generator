@@ -1,4 +1,99 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
+
+interface CreditHistory {
+  id: string
+  effect_name?: string
+  credit: number
+  created_at: string
+  type: 'image' | 'video' | 'purchase' | 'subscription'
+  description?: string
+}
+
+interface UserData {
+  user: {
+    id: string
+    email: string
+    name: string
+  }
+  subscription: {
+    status: string
+    plan_name: string
+    current_period_end: string
+  }
+  credit_usage: {
+    credits_total: number
+    credits_used: number
+    credits_remain: number
+    period_start: string
+    period_end: string
+  }
+}
+
 export default function CreditsPage() {
+  const { data: session } = useSession()
+  const [userData, setUserData] = useState<UserData | null>(null)
+  const [creditHistory, setCreditHistory] = useState<CreditHistory[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (session) {
+      fetchUserData()
+      fetchCreditHistory()
+    }
+  }, [session])
+
+  const fetchUserData = async () => {
+    try {
+      const response = await fetch('/api/user/get_user_subscription_info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: session?.user?.email })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setUserData(data)
+      }
+    } catch (err) {
+      console.error('Error fetching user data:', err)
+      setError('获取用户信息失败')
+    }
+  }
+
+  const fetchCreditHistory = async () => {
+    try {
+      const response = await fetch('/api/credit/history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          user_id: session?.user?.email 
+        })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        // 转换数据格式
+        const formattedHistory = data.data?.map((item: any) => ({
+          id: item.id,
+          effect_name: item.effect_name,
+          credit: item.credit,
+          created_at: item.created_at,
+          type: item.credit > 0 ? (item.effect_name ? 'usage' : 'purchase') : 'usage',
+          description: item.effect_name || (item.credit > 0 ? '积分充值' : '积分使用')
+        })) || []
+        setCreditHistory(formattedHistory)
+      }
+    } catch (err) {
+      console.error('Error fetching credit history:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const creditPackages = [
     {
       id: 1,
@@ -30,40 +125,39 @@ export default function CreditsPage() {
     }
   ]
 
-  const usageHistory = [
-    {
-      id: 1,
-      type: 'image',
-      description: '文字生成图像',
-      credits: -1,
-      date: '2024-01-15 14:30',
-      balance: 849
-    },
-    {
-      id: 2,
-      type: 'video',
-      description: '图像生成视频',
-      credits: -15,
-      date: '2024-01-14 10:15',
-      balance: 850
-    },
-    {
-      id: 3,
-      type: 'purchase',
-      description: '购买积分包',
-      credits: 100,
-      date: '2024-01-10 09:00',
-      balance: 865
-    },
-    {
-      id: 4,
-      type: 'subscription',
-      description: '月度订阅奖励',
-      credits: 100,
-      date: '2024-01-01 00:00',
-      balance: 765
-    }
-  ]
+  if (!session) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">请先登录</p>
+          <a href="/signin" className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+            登录
+          </a>
+        </div>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">加载中...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center text-red-600">
+          <p>{error}</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -77,15 +171,17 @@ export default function CreditsPage() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-blue-100 mb-2">当前积分余额</p>
-            <p className="text-4xl font-bold mb-4">850 积分</p>
-            <div className="flex items-center space-x-4 text-sm">
-              <span className="bg-white/20 px-3 py-1 rounded-full">
-                月度订阅: +100/月
-              </span>
-              <span className="bg-white/20 px-3 py-1 rounded-full">
-                有效期至: 2024-02-01
-              </span>
-            </div>
+            <p className="text-4xl font-bold mb-4">{userData?.credit_usage?.credits_remain || 0} 积分</p>
+            {userData?.subscription?.status === 'active' && (
+              <div className="flex items-center space-x-4 text-sm">
+                <span className="bg-white/20 px-3 py-1 rounded-full">
+                  月度订阅: +{userData?.credit_usage?.credits_total || 100}/月
+                </span>
+                <span className="bg-white/20 px-3 py-1 rounded-full">
+                  有效期至: {new Date(userData?.subscription?.current_period_end).toLocaleDateString('zh-CN')}
+                </span>
+              </div>
+            )}
           </div>
           <div className="text-6xl opacity-50">💎</div>
         </div>
@@ -165,58 +261,56 @@ export default function CreditsPage() {
       <div>
         <h2 className="text-xl font-semibold mb-4">使用记录</h2>
         <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  时间
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  类型
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  描述
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  积分变化
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  余额
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {usageHistory.map((record) => (
-                <tr key={record.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {record.date}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      record.type === 'purchase' || record.type === 'subscription'
-                        ? 'bg-green-100 text-green-800'
-                        : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {record.type === 'purchase' ? '购买' :
-                       record.type === 'subscription' ? '订阅' :
-                       record.type === 'image' ? '图像' : '视频'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    {record.description}
-                  </td>
-                  <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-medium ${
-                    record.credits > 0 ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    {record.credits > 0 ? '+' : ''}{record.credits}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
-                    {record.balance}
-                  </td>
+          {creditHistory.length > 0 ? (
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    时间
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    类型
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    描述
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    积分变化
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {creditHistory.map((record) => (
+                  <tr key={record.id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(record.created_at).toLocaleString('zh-CN')}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        record.credit > 0 
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-blue-100 text-blue-800'
+                      }`}>
+                        {record.credit > 0 ? '充值' : '使用'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {record.description}
+                    </td>
+                    <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-medium ${
+                      record.credit > 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {record.credit > 0 ? '+' : ''}{record.credit}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-gray-500">暂无积分使用记录</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

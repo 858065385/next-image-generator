@@ -1,11 +1,129 @@
+'use client'
+
 import Link from 'next/link'
+import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
+
+interface UserData {
+  user: {
+    id: string
+    email: string
+    name: string
+  }
+  subscription: {
+    status: string
+    plan_name: string
+    current_period_end: string
+  }
+  credit_usage: {
+    credits_total: number
+    credits_used: number
+    credits_remain: number
+  }
+}
+
+interface GenerationHistory {
+  id: string
+  effect_name: string
+  prompt: string
+  output_url: string
+  status: string
+  created_at: string
+}
 
 export default function DashboardPage() {
+  const { data: session } = useSession()
+  const [userData, setUserData] = useState<UserData | null>(null)
+  const [recentWorks, setRecentWorks] = useState<GenerationHistory[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (session) {
+      fetchUserData()
+      fetchRecentWorks()
+    }
+  }, [session])
+
+  const fetchUserData = async () => {
+    try {
+      const response = await fetch('/api/user/get_user_subscription_info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: session?.user?.email })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setUserData(data)
+      }
+    } catch (err) {
+      console.error('Error fetching user data:', err)
+      setError('获取用户信息失败')
+    }
+  }
+
+  const fetchRecentWorks = async () => {
+    try {
+      const response = await fetch('/api/effect_result/list_by_user_id', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          user_id: session?.user?.email,
+          page: 1,
+          limit: 4
+        })
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setRecentWorks(data.data || [])
+      }
+    } catch (err) {
+      console.error('Error fetching recent works:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (!session) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">请先登录</p>
+          <Link href="/signin" className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+            登录
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">加载中...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center text-red-600">
+          <p>{error}</p>
+        </div>
+      </div>
+    )
+  }
   return (
     <div>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">仪表盘</h1>
-        <p className="text-gray-600">欢迎回来！查看你的创作统计和账户信息</p>
+        <p className="text-gray-600">欢迎回来，{userData?.user?.name || session.user?.name}！查看你的创作统计和账户信息</p>
       </div>
 
       {/* 统计卡片 */}
@@ -14,7 +132,9 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">当前积分</p>
-              <p className="text-3xl font-bold text-blue-600">850</p>
+              <p className="text-3xl font-bold text-blue-600">
+                {userData?.credit_usage?.credits_remain || 0}
+              </p>
             </div>
             <div className="text-4xl">💎</div>
           </div>
@@ -29,7 +149,9 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">本月生成</p>
-              <p className="text-3xl font-bold text-green-600">42</p>
+              <p className="text-3xl font-bold text-green-600">
+                {userData?.credit_usage?.credits_used || 0}
+              </p>
             </div>
             <div className="text-4xl">🎨</div>
           </div>
@@ -44,7 +166,9 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">订阅状态</p>
-              <p className="text-3xl font-bold text-purple-600">专业版</p>
+              <p className="text-3xl font-bold text-purple-600">
+                {userData?.subscription?.status === 'active' ? '专业版' : '免费版'}
+              </p>
             </div>
             <div className="text-4xl">💳</div>
           </div>
@@ -92,13 +216,30 @@ export default function DashboardPage() {
           </Link>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="aspect-square bg-gray-200 rounded-lg overflow-hidden">
-              <div className="w-full h-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
-                <span className="text-4xl opacity-50">🎨</span>
+          {recentWorks.length > 0 ? (
+            recentWorks.map((work) => (
+              <div key={work.id} className="aspect-square bg-gray-200 rounded-lg overflow-hidden group">
+                {work.output_url ? (
+                  <img 
+                    src={work.output_url} 
+                    alt={work.prompt}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
+                    <span className="text-4xl opacity-50">🎨</span>
+                  </div>
+                )}
               </div>
+            ))
+          ) : (
+            <div className="col-span-full text-center py-8">
+              <p className="text-gray-500">还没有生成作品，快去创作吧！</p>
+              <Link href="/generate" className="text-blue-600 hover:underline mt-2 inline-block">
+                开始创作 →
+              </Link>
             </div>
-          ))}
+          )}
         </div>
       </div>
     </div>

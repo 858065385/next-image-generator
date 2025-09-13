@@ -1,13 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
 
 export default function SettingsPage() {
+  const { data: session } = useSession()
   const [user, setUser] = useState({
-    name: '张三',
-    email: 'zhangsan@example.com',
-    avatar: '',
+    name: session?.user?.name || '',
+    email: session?.user?.email || '',
+    avatar: session?.user?.image || '',
     language: 'zh-CN',
     notifications: {
       email: true,
@@ -15,18 +17,76 @@ export default function SettingsPage() {
       marketing: false
     }
   })
+  const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState('')
+
+  useEffect(() => {
+    if (session?.user) {
+      setUser({
+        name: session.user.name || '',
+        email: session.user.email || '',
+        avatar: session.user.image || '',
+        language: 'zh-CN',
+        notifications: {
+          email: true,
+          browser: true,
+          marketing: false
+        }
+      })
+      setFormData({
+        name: session.user.name || '',
+        email: session.user.email || '',
+        avatar: session.user.image || '',
+        language: 'zh-CN',
+        notifications: {
+          email: true,
+          browser: true,
+          marketing: false
+        }
+      })
+    }
+  }, [session])
 
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState({ ...user })
 
-  const handleSave = () => {
-    setUser({ ...formData })
-    setIsEditing(false)
+  const handleSave = async () => {
+    setLoading(true)
+    try {
+      // TODO: Implement actual API call to update user profile
+      // await fetch('/api/user/update', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify(formData)
+      // })
+      
+      setUser({ ...formData })
+      setIsEditing(false)
+      setSuccess('设置已保存')
+      setTimeout(() => setSuccess(''), 3000)
+    } catch (err) {
+      console.error('Error saving settings:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleCancel = () => {
     setFormData({ ...user })
     setIsEditing(false)
+  }
+
+  if (!session) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">请先登录</p>
+          <a href="/signin" className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">
+            登录
+          </a>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -35,6 +95,12 @@ export default function SettingsPage() {
         <h1 className="text-3xl font-bold text-gray-900 mb-2">账户设置</h1>
         <p className="text-gray-600">管理你的个人信息和偏好设置</p>
       </div>
+
+      {success && (
+        <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
+          {success}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* 左侧边栏 */}
@@ -74,15 +140,25 @@ export default function SettingsPage() {
                 <div className="space-x-2">
                   <button
                     onClick={handleCancel}
-                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                    disabled={loading}
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
                   >
                     取消
                   </button>
                   <button
                     onClick={handleSave}
-                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                    disabled={loading}
+                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 flex items-center"
                   >
-                    保存
+                    {loading ? (
+                      <>
+                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        保存中...
+                      </>
+                    ) : '保存'}
                   </button>
                 </div>
               )}
@@ -100,7 +176,10 @@ export default function SettingsPage() {
                   )}
                 </div>
                 {isEditing && (
-                  <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                  <button 
+                    className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 opacity-50 cursor-not-allowed"
+                    title="功能开发中"
+                  >
                     更换头像
                   </button>
                 )}
@@ -173,7 +252,10 @@ export default function SettingsPage() {
                   <h3 className="font-medium">密码</h3>
                   <p className="text-sm text-gray-600">上次修改：3个月前</p>
                 </div>
-                <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                <button 
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 opacity-50 cursor-not-allowed"
+                  title="功能开发中"
+                >
                   修改密码
                 </button>
               </div>
@@ -183,7 +265,10 @@ export default function SettingsPage() {
                   <h3 className="font-medium">两步验证</h3>
                   <p className="text-sm text-gray-600">使用手机验证码增强安全性</p>
                 </div>
-                <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                <button 
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 opacity-50 cursor-not-allowed"
+                  title="功能开发中"
+                >
                   启用
                 </button>
               </div>
@@ -193,7 +278,10 @@ export default function SettingsPage() {
                   <h3 className="font-medium">登录设备</h3>
                   <p className="text-sm text-gray-600">当前登录：3台设备</p>
                 </div>
-                <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                <button 
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 opacity-50 cursor-not-allowed"
+                  title="功能开发中"
+                >
                   查看详情
                 </button>
               </div>
@@ -272,7 +360,10 @@ export default function SettingsPage() {
                   <h3 className="font-medium text-red-900">删除账户</h3>
                   <p className="text-sm text-red-700">永久删除账户和所有数据</p>
                 </div>
-                <button className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">
+                <button 
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 opacity-50 cursor-not-allowed"
+                  title="功能开发中"
+                >
                   删除账户
                 </button>
               </div>
@@ -282,7 +373,10 @@ export default function SettingsPage() {
                   <h3 className="font-medium">导出数据</h3>
                   <p className="text-sm text-gray-600">下载你的所有数据</p>
                 </div>
-                <button className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50">
+                <button 
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 opacity-50 cursor-not-allowed"
+                  title="功能开发中"
+                >
                   导出数据
                 </button>
               </div>
